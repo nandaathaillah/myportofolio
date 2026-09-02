@@ -15,7 +15,6 @@ import os
 from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,7 +30,7 @@ SECRET_KEY = 'django-insecure-n&10pw5!+_z(3t$pz+&5)n%i*3o0%6a16@+_t3(tk!eloqnydm
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1","nanda.athaillah-myportofolio.pws.cs.ui.ac.id"]
 
 
 # Application definition
@@ -47,6 +46,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -60,7 +61,7 @@ ROOT_URLCONF = 'myportofolio.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -71,6 +72,12 @@ TEMPLATES = [
         },
     },
 ]
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+WHITENOISE_USE_FINDERS = True
+
 
 WSGI_APPLICATION = 'myportofolio.wsgi.application'
 
