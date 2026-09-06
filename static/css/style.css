@@ -50,7 +50,7 @@
 
 body {
     /* font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; */
-    font-family: -apple-system, "SarkazFont", Impact, Impact, Impact, Impact;
+    font-family: -apple-system, "Impact", Impact, Impact, Impact;
     color: var(--ink);
     background-color: var(--paper);
     line-height: 1.6;
@@ -58,7 +58,7 @@ body {
 }
 
 h1, .brand {
-    font-family: "SarkazFont", -apple-system, sans-serif;
+    font-family: "Impact", -apple-system, sans-serif;
 }
 
 .container {
@@ -198,4 +198,91 @@ h1, .brand {
     .social-links {
         justify-content: flex-start;
     }
+
+}
+/*  Resume Sections  */
+.resume-section {
+    padding: 3rem 0;
+    border-top: 1px solid var(--line);
+    margin-top: 2rem;
+}
+
+.section-title {
+    color: var(--accent);
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.resume-item {
+    margin-bottom: 2rem;
+}
+
+.resume-item h3 {
+    color: var(--ink);
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.resume-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    opacity: 0.8;
+}
+
+.resume-item ul, .skills-list {
+    list-style: none;
+    color: var(--text-muted);
+}
+
+.resume-item ul li, .skills-list li {
+    position: relative;
+    padding-left: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.resume-item ul li::before, .skills-list li::before {
+    content: "▹";
+    position: absolute;
+    left: 0;
+    color: var(--ink);
+    font-weight: bold;
+}
+
+.skills-list li strong {
+    color: var(--ink);
+    font-weight: 600;
+}
+/* Adds a large break (newline effect) below each main section */
+.resume-section {
+    padding: 3rem 0;
+    border-top: 1px solid var(--line);
+    margin-top: 2rem;
+    margin-bottom: 3rem; 
+}
+
+/* Adds a bit more spacing between individual jobs/awards */
+.resume-item {
+    margin-bottom: 2.5rem; 
+}
+
+/* Pushes the bullet points to the right (tab effect) */
+.resume-item ul, .skills-list {
+    list-style: none;
+    color: var(--text-muted);
+    margin-left: 2rem; 
+}
+
+.sarkaz-theme, 
+.sarkaz-theme h1, 
+.sarkaz-theme h2, 
+.sarkaz-theme h3, 
+.sarkaz-theme p, 
+.sarkaz-theme a, 
+.sarkaz-theme li, 
+.sarkaz-theme dt, 
+.sarkaz-theme dd {
+    font-family: 'SarkazFont', sans-serif !important;
 }
