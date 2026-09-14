@@ -3,6 +3,9 @@ from django.shortcuts import render
 from main.models import Experience
 from .models import Experience, Award, Skill
 
+from django.core.management import call_command
+from django.http import HttpResponse
+
 
 def show_main(request):
     context = {
@@ -39,3 +42,11 @@ def show_skills(request):
         "name": "Nanda Athaillah Nurano"
     }
     return render(request, "skills.html", context)
+
+def load_my_data(request):
+    try:
+        # This mimics typing 'python manage.py loaddata' in the terminal
+        call_command('loaddata', 'main_data.json')
+        return HttpResponse("Data successfully loaded! You can go check your portfolio now.")
+    except Exception as e:
+        return HttpResponse(f"Uh oh, something went wrong: {e}")
