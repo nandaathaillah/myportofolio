@@ -1,0 +1,67 @@
+[
+{
+    "model": "main.experience",
+    "pk": "2b4d641e-6f0e-4181-8929-b1d067d6a344",
+    "fields": {
+        "title": "Head of Informatics Club",
+        "description": "SMA Negeri 34 Jakarta | 2022 - 2025: Was active as the head of Informatics Club.",
+        "category": "volunteer",
+        "thumbnail": null,
+        "started_at": "2026-09-12T11:19:21.033Z",
+        "ended_at": "2025-02-05T00:00:00Z"
+    }
+},
+{
+    "model": "main.experience",
+    "pk": "bc92e59d-4e44-411e-98ea-3149d49a1ef4",
+    "fields": {
+        "title": "Administrator of English Club",
+        "description": "SMP Negeri 85 Jakarta | 2019 - 2022: Was active as a treasurer and prepared English Club meeting agendas.",
+        "category": "volunteer",
+        "thumbnail": null,
+        "started_at": "2026-09-12T11:19:21.056Z",
+        "ended_at": "2022-01-05T00:00:00Z"
+    }
+},
+{
+    "model": "main.award",
+    "pk": 1,
+    "fields": {
+        "title": "Silver Medalist – Microsoft Excel Category",
+        "description": "The 2023 Microsoft Office Specialist National Championship. Organized by MyEduSolve (Microsoft Indonesia).",
+        "year": "2023"
+    }
+},
+{
+    "model": "main.skill",
+    "pk": 1,
+    "fields": {
+        "category": "Programming",
+        "items": "C, C++, Java, Python, MIPS Assembly"
+    }
+},
+{
+    "model": "main.skill",
+    "pk": 2,
+    "fields": {
+        "category": "Software & Design",
+        "items": "Microsoft Excel, Microsoft Word, Pixlr, Photoshop, PowerPoint, Adobe Premiere"
+    }
+},
+{
+    "model": "main.skill",
+    "pk": 3,
+    "fields": {
+        "category": "Languages",
+        "items": "Indonesian (Primary), English (Full Professional Proficiency)"
+    }
+},
+{
+    "model": "main.skill",
+    "pk": 4,
+    "fields": {
+        "category": "Soft Skills",
+        "items": "Communication, public speaking, leadership, table setter, critical thinking, problem-solving"
+    }
+}
+]
