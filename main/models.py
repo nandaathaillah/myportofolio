@@ -31,3 +31,12 @@ class Experience(models.Model):
     @property
     def is_ongoing(self):
         return self.ended_at is None
+
+class Award(models.Model):
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    year = models.CharField(max_length=4)
+
+class Skill(models.Model):
+    category = models.CharField(max_length=100) # TODO: Delete  e.g., "Programming", "Languages"
+    items = models.TextField() # TODO: Delete e.g., "C, C++, Java"

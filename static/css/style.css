@@ -306,13 +306,13 @@ h1, .brand {
 
 .experience-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));    
     gap: 1rem;
 }
 
 .experience-card {
     padding: 1.25rem;
-    background-color: #fff;
+    background-color: #00000000;
     border: 1px solid var(--line);
     border-radius: var(--radius);
 }
