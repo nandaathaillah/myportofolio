@@ -422,7 +422,7 @@ h1, .brand {
     display: block;
     width: 100%;
     height: auto;
-    border: 1px solid black;
+    border: 1px solid white;
     border-radius: var(--radius);
 }
 
@@ -530,7 +530,7 @@ h1, .brand {
     background: var(--paper);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    box-shadow: 0 1rem 3rem rgba(28, 25, 23, 0.22);
+    box-shadow: 0 1rem 3rem rgba(253, 253, 253, 0.22);
 }
 
 .project-delete-modal__content h2 {
@@ -600,4 +600,33 @@ h1, .brand {
         width: 100%;
         text-align: center;
     }
+}
+
+.project-delete-modal {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    max-width: 400px;
+    margin: auto;
+    border-radius: var(--radius);
+}
+
+.project-delete-modal::backdrop {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+}
+
+.project-delete-modal_content {
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.project-delete-modal_actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
 }
