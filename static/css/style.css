@@ -633,3 +633,54 @@ h1, .brand {
     margin-top: 1.5rem;
     justify-content: flex-end;
 }
+
+/* 1. Make the dropdown match your text boxes */
+.form-group select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font: inherit;
+    background-color: #fff;
+    color: var(--paper); /* Ensures text is readable */
+}
+
+.form-group select:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+}
+
+/* 2. Lock the checkbox size so it doesn't get squished */
+.form-group input[type="checkbox"] {
+    width: 1.5rem;
+    height: 1.5rem;
+    cursor: pointer;
+    display: block;
+    margin-top: 0.5rem;
+}
+/* 1. Make the dropdown match your text boxes */
+.form-group select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    font: inherit;
+    background-color: #fff;
+    color: var(--paper); /* Ensures text is readable */
+}
+
+.form-group select:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent);
+}
+
+/* 2. Lock the checkbox size so it doesn't get squished */
+.form-group input[type="checkbox"] {
+    width: 1.5rem;
+    height: 1.5rem;
+    cursor: pointer;
+    display: block;
+    margin-top: 0.5rem;
+}

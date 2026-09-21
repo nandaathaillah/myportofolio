@@ -1,18 +1,16 @@
-<div class="project-actions">
-    <button type="button" class="button button-danger" popovertarget="delete-award-{{ award.id }}">
-        Hapus Award
-    </button>
-</div>
+<button type="button" class="button button-danger" popovertarget="delete-award-{{ award.id }}">
+    Delete Award
+</button>
 
 <div id="delete-award-{{ award.id }}" class="project-delete-modal" popover="auto">
     <div class="project-delete-modal_content">
-        <h2>Hapus Award?</h2>
-        <p>Apakah Anda yakin ingin menghapus <strong>{{ award.title }}</strong>?</p>
+        <h2>Delete Award?</h2>
+        <p>Are you sure you want to delete <strong>{{ award.title }}</strong>?</p>
         <div class="project-delete-modal_actions">
-            <button type="button" class="button button-secondary" popovertarget="delete-award-{{ award.id }}" popovertargetaction="hide">Batal</button>
+            <button type="button" class="button button-secondary" popovertarget="delete-award-{{ award.id }}" popovertargetaction="hide">Cancel</button>
             <form method="post" action="{% url 'main:delete_award' award.id %}">
                 {% csrf_token %}
-                <button type="submit" class="button button-danger">Ya, Hapus</button>
+                <button type="submit" class="button button-danger">Yes, delete</button>
             </form>
         </div>
     </div>

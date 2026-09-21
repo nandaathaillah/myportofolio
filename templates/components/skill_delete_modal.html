@@ -1,0 +1,20 @@
+<button type="button" class="button button-danger" popovertarget="delete-skill-{{ skill.id }}">
+    Delete Skill
+</button>
+
+<div id="delete-skill-{{ skill.id }}" popover class="project-delete-modal">
+    <div class="project-delete-modal_content">
+        <h2 style="margin-top: 0;">Delete Skill?</h2>
+        <p>Are you sure you want to delete <strong>{{ skill.category }}</strong>?</p>
+
+        <div class="project-delete-modal_actions">
+            <button type="button" class="button button-secondary" popovertarget="delete-skill-{{ skill.id }}" popovertargetaction="hide">
+                Cancel
+            </button>
+            <form action="{% url 'main:delete_skill' skill.id %}" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="button button-danger">Yes, delete</button>
+            </form>
+        </div>
+    </div>
+</div>

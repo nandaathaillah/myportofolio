@@ -1,10 +1,9 @@
-from django.forms import ModelForm, TextInput, Textarea
-from main.models import Award
+from django.forms import ModelForm, Select, TextInput, Textarea
+from main.models import Award, Skill, Experience  
 
 class AwardForm(ModelForm):
     class Meta:
         model = Award
-        # Only ask for fields that ACTUALLY exist in your Award model!
         fields = [
             "title",
             "description",
@@ -12,9 +11,9 @@ class AwardForm(ModelForm):
         ]
         
         labels = {
-            "title": "Nama Penghargaan",
-            "description": "Deskripsi",
-            "year": "Tahun",
+            "title": "Award name",
+            "description": "Description",
+            "year": "Year",
         }
         
         widgets = {
@@ -26,7 +25,7 @@ class AwardForm(ModelForm):
             ),
             "description": Textarea(
                 attrs={
-                    "placeholder": "Ceritakan tentang penghargaan ini...",
+                    "placeholder": "Describe this award...",
                     "rows": 3,
                 }
             ),
@@ -35,4 +34,36 @@ class AwardForm(ModelForm):
                     "placeholder": "2023",
                 }
             ),
+        }
+
+    from main.models import Skill # Add Skill to your imports at the top!
+
+class SkillForm(ModelForm):
+    class Meta:
+        model = Skill
+        fields = ["category", "items"]
+        labels = {
+            "category": "Skill Category",
+            "items": "Skill Items",
+        }
+        widgets = {
+            "category": TextInput(attrs={"placeholder": "Programming, Languages, etc.", "maxlength": 100}),
+            "items": Textarea(attrs={"placeholder": "C, C++, Java", "rows": 3}),
+        }
+
+
+class ExperienceForm(ModelForm):
+    class Meta:
+        model=Experience
+        fields = ["title", "category", "description", "is_ongoing"] 
+        labels = {
+            "title": "Experience Title",
+            "category": "Category",
+            "description": "Description",
+            "is_ongoing": "Is this experience ongoing?",
+        }  
+
+        Widgets ={
+            "category": Select(attrs={"class": "form-select"}),
+            "is_ongoing": Select(choices=[(True, 'Yes (Ongoing)'), (False, 'No (Completed)')], attrs={"class": "form-select"})
         }

@@ -1,45 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skills - {{ name }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@100..700&display=swap" rel="stylesheet">
-</head>
-<body>
-    <header class="site-header">
-        <div class="container">
-            <a href="#profile" class="brand">{{ name }}</a>
-            <nav>
-                <nav>
-                    <a href="{% url 'main:show_main' %}" class="brand">{{ name }}</a>
-                    <a href="{% url 'main:show_experience' %}">Experience</a>
-                    <a href="{% url 'main:show_awards' %}">Awards</a>
-                    <a href="{% url 'main:show_skills' %}">Skills</a>
-                </nav>
-            </nav>
-        </div>
-    </header>
+{% extends "base.html" %}
 
+{% block meta %}
+    <title>Skills - {{ name }}</title>
+{% endblock meta %}
+
+{% block content %}
     <main>
-        <section class="experience-section" id="experience">
+        <section class="experience-section" id="skills">
             <div class="container">
-                <p class="section-kicker">My skills so far</p>
-                <h1>Skills</h1>
+                <p class="section-kicker">My Skills so far</p>
+                
+                <div class="project-header">
+                    <h1>Skills</h1> 
+                    <a href="{% url 'main:create_skill' %}" class="button project-add-button">+ Add a Skill</a>
+                </div>
+
+                <!-- Standard Django Search Form -->
+                <form method="get" action="{% url 'main:show_skills' %}" class="project-search">
+                    <input type="search" name="q" value="{{ query }}" placeholder="Find a skill..." class="project-search_input">
+                    <button type="submit" class="button">Find</button>
+                </form>
 
                 <div class="experience-grid">
-                    {% for skill in skill_list %}
+                    {% for skill in skills %}
                         <article class="experience-card">
+                            <!-- Using Category as the main title -->
                             <h2>{{ skill.category }}</h2>
+                            
+                            <!-- Using Items as the description -->
                             <p class="experience-description">
                                 {{ skill.items }}
                             </p>
+                            
+                            <div class="project-card-actions" style="margin-top: 1.5rem;">
+                                <!-- Flexbox aligns the buttons perfectly -->
+                                <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">
+                                    <a href="{% url 'main:edit_skill' skill.id %}" class="button button-secondary">Edit Skill</a>
+                                    {% include "components/skill_delete_modal.html" with skill=skill %}
+                                </div>
+                            </div>
                         </article>
                     {% empty %}
                         <p class="empty-state">
@@ -50,11 +49,4 @@
             </div>
         </section>
     </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <p>&copy; 2026 {{ name }}. Fakultas Ilmu Komputer, Universitas Indonesia.</p>
-        </div>
-    </footer>
-</body>
-</html>
+{% endblock content %}

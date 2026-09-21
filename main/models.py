@@ -23,23 +23,23 @@ class Experience(models.Model):
     )
     thumbnail = models.URLField(blank=True, null=True)
     started_at = models.DateTimeField(auto_now_add=True)
-    ended_at = models.DateTimeField(blank=True, null=True)
+    is_ongoing = models.BooleanField(default=True)
 
     def __str__(self):
         return self.title
 
-    @property
-    def is_ongoing(self):
-        return self.ended_at is None
 
 class Award(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     year = models.CharField(max_length=4)
+    time_added = models.DateTimeField(auto_now_add=True)
+
 
 class Skill(models.Model):
     category = models.CharField(max_length=100) # TODO: Delete  e.g., "Programming", "Languages"
     items = models.TextField() # TODO: Delete e.g., "C, C++, Java"
+    time_added = models.DateTimeField(auto_now_add=True)
 
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
