@@ -5,19 +5,11 @@ NPM     : 2506557425
 Class   : PBP KKi
 
 
-1. Explain what happens when a user opens the new portfolio page, starting from the request received by the project until the data appears in the browser. In your answer, explain the roles of the project’s 
-urls.py, the application’s urls.py, the view, the model, and the template.
-Answer:
-The user's browser asks the server for a specific URL (like /awards/). The project's urls.py forwards the request to the app's urls.py, which matches the URL path and triggers the correct View. The View asks the Model for data. The Model grabs this data from the database and hands it back to the View. The View passes that data into the Template (A.K.A the HTML file). The template plugs the data into its layout, and the finished HTML is sent back to the user's browser.
+1. Explain why we use Django’s ModelForm instead of creating HTML forms manually. Additionally, explain why we are required to add {% csrf_token %} to these forms!
+  Django ModelForm automatically generates HTML inputs and handles data validation directly from the database model, so I don't have to manually write and map the forms. The {% csrf_token %} is a mandatory security measure that prevents Cross-Site Request Forgery attacks by ensuring the form submission originated directly from your actual website, not a malicious third party.
 
+2. In Tutorial 03, we discussed JSON and XML data formats. Why is JSON preferred in modern web application development compared to XML?
+JSON is preferred over XML because it is much lighter and parses instantly into native JavaScript objects. It uses a simple key-value structure that perfectly matches modern programming languages, avoiding bulky, slow and hard to read opening and closing tags required by XML.
 
-3. Why should the data for the new portfolio section be stored in a model instead of being written directly in the template? Explain how this choice affects application maintenance and future development.
-
-Storing data in a Model separates your actual content from your website's design.
-Maintenance: You can safely add, edit, or delete data through the database without ever touching or risking breaking your HTML code.
-Future Development: It makes your app scalable. If you add 100 new awards, a template loop handles them automatically. It also allows you to easily sort, filter, or search your data using Python later.
-
-
-3. What is the difference between makemigrations and migrate in Django? Give an example of a model change that requires you to run both commands.
-Answer:
-Makemigrations makes and prepares the files for migrations(Makes some sort of blueprint), while migrate migrates the files(Executes the blueprint). For example is if you add a new school_name field to your Experience model, you must run makemigrations to write the instruction to "add a new column," and then run migrate to actually create that column in your database.
+3. Explain the flow that occurs when you use a view function to return your portfolio data in JSON format. Why do we need to perform the serialization process on Django models before returning the data?
+When a view requests data, Django returns a Python QuerySet. Because web browsers and internet protocols cannot read language-specific Python objects, we must perform serialization. This process converts the complex Python data into a universal, plain-text JSON string so it can be successfully transmitted via an HttpResponse and read by the client. 
