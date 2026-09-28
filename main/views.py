@@ -80,7 +80,7 @@ def create_experience(request):
 
 @login_required(login_url="/login/")  
 def edit_experience(request, id):
-    if not request.user.is_superuser:
+    if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
         raise PermissionDenied
 
     # Grab the exact experience by its UUID
@@ -198,7 +198,7 @@ def get_awards_json(request):
 
 @login_required(login_url="/login/")  
 def edit_award(request, id):
-    if not request.user.is_superuser:
+    if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
         raise PermissionDenied
 
     # Grab the specific award you want to edit
@@ -237,7 +237,7 @@ def create_skill(request):
 
 @login_required(login_url="/login/")  
 def edit_skill(request, id):
-    if not request.user.is_superuser:
+    if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
         raise PermissionDenied
 
     skill = get_object_or_404(Skill, pk=id)
