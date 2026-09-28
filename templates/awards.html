@@ -12,7 +12,9 @@
                 
                 <div class="project-header">
                     <h1>Awards</h1> 
-                    <a href="{% url 'main:create_award' %}" class="button project-add-button">+ Add an Award</a>
+                    {% if user.is_superuser %}  
+                        <a href="{% url 'main:create_award' %}" class="button project-add-button">+ Add an Award</a>
+                    {% endif %}  
                 </div>
 
                 <form method="get" action="{% url 'main:show_awards' %}" class="project-search">
@@ -33,8 +35,11 @@
                             
                             <div class="project-card-actions" style="margin-top: 1.5rem;">
                                 <div class="project-actions">
-                                    <a href="{% url 'main:edit_award' award.id %}" class="button button-secondary">Edit Award</a>
-                                    {% include "components/award_delete_modal.html" with award=award %} <!--Delete Button--> 
+                                    {% include "components/award_star.html" with award=award %}
+                                    {% if user.is_superuser %}  
+                                        <a href="{% url 'main:edit_award' award.id %}" class="button button-secondary">Edit Award</a>
+                                        {% include "components/award_delete_modal.html" with award=award %} <!--Delete Button--> 
+                                    {% endif %}  
                                 </div>
                             </div>
                         </article>

@@ -12,8 +12,10 @@
                 
                 <div class="project-header">
                     <h1>Skills</h1> 
-                    <a href="{% url 'main:create_skill' %}" class="button project-add-button">+ Add a Skill</a>
-                </div>
+                    {% if user.is_superuser %}  
+                        <a href="{% url 'main:create_skill' %}" class="button project-add-button">+ Add a Skill</a>
+                    {% endif %}  
+                    </div>
 
                 <!-- Standard Django Search Form -->
                 <form method="get" action="{% url 'main:show_skills' %}" class="project-search">
@@ -35,8 +37,11 @@
                             <div class="project-card-actions" style="margin-top: 1.5rem;">
                                 <!-- Flexbox aligns the buttons perfectly -->
                                 <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">
-                                    <a href="{% url 'main:edit_skill' skill.id %}" class="button button-secondary">Edit Skill</a>
-                                    {% include "components/skill_delete_modal.html" with skill=skill %}
+                                    {% include "components/skill_star.html" with award=award %}
+                                    {% if user.is_superuser %}
+                                        <a href="{% url 'main:edit_skill' skill.id %}" class="button button-secondary">Edit Skill</a>
+                                        {% include "components/skill_delete_modal.html" with skill=skill %}
+                                    {% endif %}
                                 </div>
                             </div>
                         </article>

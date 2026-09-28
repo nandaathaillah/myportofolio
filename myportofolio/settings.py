@@ -57,7 +57,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'myportofolio.urls'
 
 TEMPLATES = [
     {
@@ -73,6 +72,8 @@ TEMPLATES = [
         },
     },
 ]
+
+ROOT_URLCONF = 'myportofolio.urls'
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
