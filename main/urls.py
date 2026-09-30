@@ -1,7 +1,7 @@
 from django.urls import path
 from main.views import create_award, create_skill, delete_award, delete_skill, edit_award, edit_skill, get_awards_json, show_json_skill, show_main, show_experience, show_awards, show_skills, toggle_star_award, toggle_star_experience
 from main.views import show_main, show_experience, show_awards, show_skills, create_experience, edit_experience, delete_experience, register, login_user,logout_user,toggle_star_skill
-
+from main.views import get_experiences_json, create_experience_ajax
 app_name = 'main'
 
 urlpatterns = [
@@ -31,4 +31,7 @@ urlpatterns = [
     path("experience/<uuid:experience_id>/star/", toggle_star_experience, name="toggle_star_experience"),
     path("awards/<str:award_id>/star/", toggle_star_award, name="toggle_star_award"),
     path("skills/<str:skill_id>/star/", toggle_star_skill, name="toggle_star_skill"),
+
+    path("experience/json/", get_experiences_json, name="get_experiences_json"),
+    path("experience/add-ajax/", create_experience_ajax, name="create_experience_ajax"),
 ]

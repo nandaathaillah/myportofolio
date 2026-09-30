@@ -29,7 +29,8 @@ from main.forms import ExperienceForm
 from django.contrib.auth.decorators import login_required  
 from django.core.exceptions import PermissionDenied        
 
-
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 def show_main(request):
     last_login = request.COOKIES.get('last_login', 'No active login session / Cookie not found')
@@ -49,20 +50,71 @@ def show_main(request):
     return render(request, "index.html", context)
 
 
-def show_experience(request):
-    query =request.GET.get('q')
+# def show_experience(request):
+#     query =request.GET.get('q')
     
-    if query:
-        experience_list = Experience.objects.filter(title__icontains=query) | Experience.objects.filter(description__icontains=query)
-    else:
-        experience_list = Experience.objects.all()
+#     if query:
+#         experience_list = Experience.objects.filter(title__icontains=query) | Experience.objects.filter(description__icontains=query)
+#     else:
+#         experience_list = Experience.objects.all()
+
+#     context = {
+#         "name": "Nanda Athaillah Nurano",
+#         "experience_list": experience_list, 
+#         "query": query if query else "",
+#     }
+#     return render(request, "experience.html", context)
+
+def show_experience(request):
+    query = request.GET.get('q', '').strip()
 
     context = {
         "name": "Nanda Athaillah Nurano",
-        "experience_list": experience_list, 
-        "query": query if query else "",
+        "query": query,
+        "form": ExperienceForm(), 
     }
     return render(request, "experience.html", context)
+
+from django.http import JsonResponse
+
+from django.http import JsonResponse
+from django.db.models import Q
+
+def get_experiences_json(request):
+    query = request.GET.get("q", "").strip()
+    
+    # prefetch_related optimizes the database query for the ManyToMany field
+    experiences = Experience.objects.prefetch_related('starred_by').all()
+    
+    # Replicating previous search logic using Q objects for cleaner code
+    if query:
+        experiences = experiences.filter(Q(title__icontains=query) | Q(description__icontains=query))
+        
+    data = []
+    for exp in experiences:
+        starred_users = exp.starred_by.all()
+        is_starred = request.user in starred_users if request.user.is_authenticated else False
+        starred_by_names = ", ".join([u.username for u in starred_users])
+        
+        data.append({
+            "pk": str(exp.id),
+            "fields": {
+                "title": exp.title,
+                "description": exp.description,
+                "category": exp.category,
+                "thumbnail": exp.thumbnail,
+                "started_at": exp.started_at.strftime("%B %d, %Y") if exp.started_at else None,
+                "is_ongoing": exp.is_ongoing,
+                
+                # Star feature data
+                "star_count": starred_users.count(),
+                "is_starred": is_starred,
+                "starred_by_names": starred_by_names,
+            }
+        })
+        
+    return JsonResponse(data, safe=False)
+
 
 @login_required(login_url="/login/")  
 def create_experience(request):
@@ -77,6 +129,25 @@ def create_experience(request):
             "form": form,
         }
     return render(request, "experience_form.html", context)
+
+@require_POST
+def create_experience_ajax(request):
+    if not request.user.is_superuser:
+        return JsonResponse(
+            {"message": "Only the portfolio owner can add experiences."},
+            status=403,
+        )
+
+    form = ExperienceForm(request.POST)
+    if form.is_valid():
+        experience = form.save()
+        return JsonResponse(
+            {"message": "Experience added successfully.", "pk": str(experience.id)},
+            status=201,
+        )
+    
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+
 
 @login_required(login_url="/login/")  
 def edit_experience(request, id):
@@ -335,3 +406,4 @@ def toggle_star_skill(request, skill_id):
         else:
             skill.starred_by.add(request.user)
     return redirect("main:show_skills")
+

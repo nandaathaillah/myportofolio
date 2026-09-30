@@ -1,5 +1,8 @@
 from django.forms import ModelForm, Select, TextInput, Textarea
 from main.models import Award, Skill, Experience  
+from django.core.exceptions import ValidationError
+from django.utils.html import strip_tags
+from django.forms import ModelForm
 
 class AwardForm(ModelForm):
     class Meta:
@@ -36,7 +39,7 @@ class AwardForm(ModelForm):
             ),
         }
 
-    from main.models import Skill # Add Skill to your imports at the top!
+    from main.models import Skill # Add Skill to your imports at the top
 
 class SkillForm(ModelForm):
     class Meta:
@@ -67,3 +70,12 @@ class ExperienceForm(ModelForm):
             "category": Select(attrs={"class": "form-select"}),
             "is_ongoing": Select(choices=[(True, 'Yes (Ongoing)'), (False, 'No (Completed)')], attrs={"class": "form-select"})
         }
+
+    def clean_title(self):
+        title = strip_tags(self.cleaned_data["title"]).strip()
+        if not title:
+            raise ValidationError("Experience title can't contain only HTML tags.")
+        return title
+
+    def clean_description(self):
+        return strip_tags(self.cleaned_data["description"]).strip()
