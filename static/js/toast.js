@@ -26,7 +26,7 @@ function showToast(title, message, type = 'normal', duration = 3000) {
         toastComponent.showPopover();
         void toastComponent.offsetHeight; 
     }
-x
+    
     toastComponent.classList.remove('toast-hidden');
     toastComponent.classList.add('toast-show');
 
