@@ -1,7 +1,14 @@
 from django.urls import path
-from main.views import create_award, create_skill, delete_award, delete_skill, edit_award, edit_skill, get_awards_json, show_json_skill, show_main, show_experience, show_awards, show_skills, toggle_star_award, toggle_star_experience
-from main.views import show_main, show_experience, show_awards, show_skills, create_experience, edit_experience, delete_experience, register, login_user,logout_user,toggle_star_skill
-from main.views import get_experiences_json, create_experience_ajax
+from main.views import (
+    create_award_ajax, create_skill_ajax, create_experience_ajax,
+    delete_award, delete_skill, delete_experience,
+    edit_award, edit_skill, edit_experience,
+    get_awards_json, get_skills_json, get_experiences_json,
+    show_main, show_experience, show_awards, show_skills,
+    toggle_star_award, toggle_star_experience, toggle_star_skill,
+    register, login_user, logout_user
+)
+
 app_name = 'main'
 
 urlpatterns = [
@@ -9,18 +16,13 @@ urlpatterns = [
     path('awards/', show_awards, name='show_awards'),
     path('skills/', show_skills, name='show_skills'),
 
-    path("awards/add/", create_award, name="create_award"),
-    path("api/awards/", get_awards_json, name="get_awards_json"),   
     path("awards/<str:award_id>/delete/", delete_award, name="delete_award"),
     path('awards/<str:id>/edit/', edit_award, name='edit_award'),
 
-    path("skills/add/", create_skill, name="create_skill"),
-    path("skills/<str:id>/edit/", edit_skill, name="edit_skill"),
     path("skills/<str:id>/delete/", delete_skill, name="delete_skill"),
-    path("api/skills/", show_json_skill, name="show_json_skill"),
+    path('skills/<str:id>/edit/', edit_skill, name='edit_skill'),
 
     path('experience/', show_experience, name='show_experience'),
-    path("experience/add/", create_experience, name="create_experience"),
     path('experience/<str:id>/edit/', edit_experience, name='edit_experience'),
     path('experience/<str:id>/delete/', delete_experience, name='delete_experience'),
 
@@ -33,5 +35,9 @@ urlpatterns = [
     path("skills/<str:skill_id>/star/", toggle_star_skill, name="toggle_star_skill"),
 
     path("experience/json/", get_experiences_json, name="get_experiences_json"),
-    path("experience/add-ajax/", create_experience_ajax, name="create_experience_ajax"),
+    path("experience/add/", create_experience_ajax, name="create_experience_ajax"),
+    path("awards/add/", create_award_ajax, name="create_award_ajax"),
+    path("awards/json/", get_awards_json, name="get_awards_json"),
+    path("skills/json/", get_skills_json, name="get_skills_json"),
+    path("skills/add/", create_skill_ajax, name="create_skill_ajax"),
 ]

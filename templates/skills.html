@@ -5,56 +5,241 @@
 {% endblock meta %}
 
 {% block content %}
-    <main>
-        <section class="experience-section" id="skills">
-            <div class="container">
-                <p class="section-kicker">My Skills so far</p>
-                
-                <div class="project-header">
-                    <h1>Skills</h1> 
-                    {% if user.is_superuser %}  
-                        <a href="{% url 'main:create_skill' %}" class="button project-add-button">+ Add a Skill</a>
-                    {% endif %}  
-                    </div>
-
-                <!-- Standard Django Search Form -->
-                <form method="get" action="{% url 'main:show_skills' %}" class="project-search">
-                    <input type="search" name="q" value="{{ query }}" placeholder="Find a skill..." class="project-search_input">
-                    <button type="submit" class="button">Find</button>
-                </form>
-
-                <div class="experience-grid">
-                    {% for skill in skills %}
-                        <article class="experience-card">
-                            <!-- Using Category as the main title -->
-                            <h2>{{ skill.category }}</h2>
-                            
-                            <!-- Using Items as the description -->
-                            <p class="experience-description">
-                                {{ skill.items }}
-                            </p>
-                            
-                            <div class="project-card-actions" style="margin-top: 1.5rem;">
-                                <!-- Flexbox aligns the buttons perfectly -->
-                                <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">
-                                    {% include "components/skill_star.html" with award=award %}
-                                    {% if perms.main.change_experience or user.is_superuser %}
-                                        <a href="{% url 'main:edit_skill' skill.id %}" class="button button-secondary">Edit Skill</a>
-                                    {% endif %}
-                                    {% if user.is_superuser %}
-                                        {% include "components/skill_delete_modal.html" with skill=skill %}
-                                        
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </article>
-                    {% empty %}
-                        <p class="empty-state">
-                            No skills have been added yet.
-                        </p>
-                    {% endfor %}
-                </div>
+<main>
+    <section class="experience-section" id="skills-section">
+        <div class="container">
+            <p class="section-kicker">My Skills so far</p>
+            
+            <div class="project-header">
+                <h1>Skills</h1> 
+                {% if user.is_superuser %}  
+                    <button type="button" class="button project-add-button" popovertarget="add-skill-modal">
+                        <span aria-hidden="true">+</span> Add a Skill
+                    </button>
+                {% endif %}  
             </div>
-        </section>
-    </main>
+
+            <form id="skill-search-form" class="project-search">
+                <input type="search" id="search-input" name="q" value="{{ skills }}" placeholder="Find a skill..." class="project-search_input">
+                <button type="submit" class="button">Find</button>
+            </form>
+
+            <div id="loading" class="empty-state hide">
+                <p>Loading skills...</p>
+            </div>
+            
+            <div id="error" class="empty-state hide">
+                <p>Failed to load data. Please try again.</p>
+            </div>
+            
+            <div id="empty" class="empty-state hide">
+                <p>No skills found.</p>
+            </div>
+
+            <div id="grid" class="experience-grid hide"></div>
+            
+        </div>
+    </section>
+</main>
+
+{% if user.is_superuser %}
+    {% include "components/skill_form_modal.html" %}
+{% endif %}
+
+<script>
+const BASE_SKILLS_ENDPOINT = "{% url 'main:get_skills_json' %}";
+const CREATE_SKILL_ENDPOINT = "{% url 'main:create_skill_ajax' %}";
+const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+const HAS_CHANGE_PERM = "{{ perms.main.change_skill|yesno:'true,false' }}" === "true";
+
+let abortController;
+const SEARCH_DEBOUNCE_DELAY = 300;
+let debounceTimer;
+
+const loadingState = document.getElementById('loading');
+const errorState = document.getElementById('error');
+const emptyState = document.getElementById('empty');
+const gridContainer = document.getElementById('grid');
+const searchForm = document.getElementById('skill-search-form');
+const searchInput = document.getElementById('search-input');
+const skillForm = document.getElementById('skill-form');
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
+    loadingState.classList.toggle('hide', !showLoading);
+    errorState.classList.toggle('hide', !showError);
+    emptyState.classList.toggle('hide', !showEmpty);
+    gridContainer.classList.toggle('hide', !showGrid);
+}
+
+function closeSkillModal() {
+    const modal = document.getElementById("add-skill-modal");
+    if (modal) modal.hidePopover();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function buildSkillCard(item) {
+    const skl = item.fields;
+    const sklId = item.pk;
+    const article = document.createElement('article');
+    article.className = 'experience-card';
+
+    const starUrl = `{% url 'main:toggle_star_skill' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', sklId);
+    
+    let actionsHtml = `
+        <form method="post" action="${starUrl}" class="star-form">
+            {% csrf_token %}
+            <button type="submit" class="button button-star ${skl.is_starred ? 'is-starred' : ''}" title="${skl.star_count > 0 ? 'Starred by ' + escapeHtml(skl.starred_by_names) : 'Be the first to star'}">
+                <span aria-hidden="true">★</span>
+                ${skl.is_starred ? 'Unstar' : 'Star'}
+                <span class="star-count">${skl.star_count}</span>
+            </button>
+        </form>
+    `;
+
+    if (IS_SUPERUSER || HAS_CHANGE_PERM) {
+        const editUrl = `{% url 'main:edit_skill' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', sklId);
+        actionsHtml += `<a href="${editUrl}" class="button button-secondary">Edit Skill</a>`;
+    }
+    
+    if (IS_SUPERUSER) {
+        const deleteUrl = `{% url 'main:delete_skill' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', sklId);
+        actionsHtml += `
+            <form method="post" action="${deleteUrl}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="button button-danger" onclick="return confirm('Delete this skill?');">Delete</button>
+            </form>`;
+    }
+
+    article.innerHTML = `
+        <span class="experience-category">${escapeHtml(skl.category)}</span>
+        <h2>${escapeHtml(skl.items)}</h2>
+        
+        <div class="project-card-actions" style="margin-top: 1.5rem;">
+            <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">
+                ${actionsHtml}
+            </div>
+        </div>
+    `;
+    return article;
+}
+
+async function fetchSkills(searchQuery = "") {
+    if (abortController) abortController.abort();
+    abortController = new AbortController();
+
+    try {
+        displayPageSection({ showLoading: true });
+        const url = searchQuery ? `${BASE_SKILLS_ENDPOINT}?q=${encodeURIComponent(searchQuery)}` : BASE_SKILLS_ENDPOINT;
+        
+        const response = await fetch(url, {
+            headers: { 'Accept': 'application/json' },
+            signal: abortController.signal
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch data');
+        
+        const data = await response.json();
+        
+        if (data.length === 0) {
+            displayPageSection({ showEmpty: true });
+        } else {
+            gridContainer.innerHTML = "";
+            data.forEach(item => {
+                gridContainer.appendChild(buildSkillCard(item));
+            });
+            displayPageSection({ showGrid: true });
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        displayPageSection({ showError: true });
+    }
+}
+
+async function addSkill(event) {
+    event.preventDefault();
+    const submitButton = skillForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+
+    try {
+        const response = await fetch(CREATE_SKILL_ENDPOINT, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: new FormData(skillForm),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+            skillForm.reset();
+            closeSkillModal();
+            if (typeof showToast === 'function') {
+                showToast('Success', 'New skill added successfully!', 'success');
+            }
+            fetchSkills(searchInput.value.trim()); 
+        } else {
+            const errorMessages = result.errors
+                ? Object.values(result.errors).flat().map(error => error.message)
+                : [result.message || `Something went wrong (status ${response.status}).`];
+            if (typeof showToast === 'function') {
+                showToast('Failed to add skill', errorMessages.join('\n'), 'error');
+            } else {
+                alert('Failed to add skill: ' + errorMessages.join('\n'));
+            }
+        }
+    } catch (error) {
+        console.error('Error adding skill:', error);
+        if (typeof showToast === 'function') {
+            showToast('Failed to add skill', 'Could not reach the server. Please try again.', 'error');
+        } else {
+            alert('Failed to add skill: Could not reach the server.');
+        }
+    } finally {
+        submitButton.disabled = false;
+    }
+}
+
+function searchData() {
+    fetchSkills(searchInput.value.trim());
+}
+
+searchInput.addEventListener("input", function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(searchData, SEARCH_DEBOUNCE_DELAY);
+});
+
+searchForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+    clearTimeout(debounceTimer);
+    searchData();
+});
+
+if (skillForm) {
+    skillForm.addEventListener('submit', addSkill);
+}
+
+fetchSkills(searchInput.value.trim());
+</script>
 {% endblock content %}

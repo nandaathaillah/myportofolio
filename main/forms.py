@@ -41,20 +41,24 @@ class AwardForm(ModelForm):
 
     from main.models import Skill # Add Skill to your imports at the top
 
-class SkillForm(ModelForm):
+class AwardForm(ModelForm):
     class Meta:
-        model = Skill
-        fields = ["category", "items"]
-        labels = {
-            "category": "Skill Category",
-            "items": "Skill Items",
-        }
-        widgets = {
-            "category": TextInput(attrs={"placeholder": "Programming, Languages, etc.", "maxlength": 100}),
-            "items": Textarea(attrs={"placeholder": "C, C++, Java", "rows": 3}),
-        }
+        model = Award
+        fields = ["title", "description", "year"]
 
+    def clean_title(self):
+        title = strip_tags(self.cleaned_data["title"]).strip()
+        if not title:
+            raise ValidationError("Award title cannot contain only HTML tags.")
+        return title
 
+    def clean_description(self):
+        return strip_tags(self.cleaned_data["description"]).strip()
+        
+    def clean_year(self):
+        return strip_tags(self.cleaned_data["year"]).strip()
+
+    
 class ExperienceForm(ModelForm):
     class Meta:
         model=Experience
@@ -79,3 +83,18 @@ class ExperienceForm(ModelForm):
 
     def clean_description(self):
         return strip_tags(self.cleaned_data["description"]).strip()
+
+
+class SkillForm(ModelForm):
+    class Meta:
+        model = Skill
+        fields = ["category", "items"]
+
+    def clean_category(self):
+        category = strip_tags(self.cleaned_data["category"]).strip()
+        if not category:
+            raise ValidationError("Category cannot contain only HTML tags.")
+        return category
+
+    def clean_items(self):
+        return strip_tags(self.cleaned_data["items"]).strip()

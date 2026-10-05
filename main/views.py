@@ -31,6 +31,9 @@ from django.core.exceptions import PermissionDenied
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.db.models import Q, query
+
+
 
 def show_main(request):
     last_login = request.COOKIES.get('last_login', 'No active login session / Cookie not found')
@@ -75,10 +78,6 @@ def show_experience(request):
     }
     return render(request, "experience.html", context)
 
-from django.http import JsonResponse
-
-from django.http import JsonResponse
-from django.db.models import Q
 
 def get_experiences_json(request):
     query = request.GET.get("q", "").strip()
@@ -116,19 +115,19 @@ def get_experiences_json(request):
     return JsonResponse(data, safe=False)
 
 
-@login_required(login_url="/login/")  
-def create_experience(request):
-    if not request.user.is_superuser:
-        raise PermissionDenied
-    form = ExperienceForm(request.POST or None)
-    if form.is_valid() and request.method == "POST":
-        form.save()
-        return redirect('main:show_experience')
-    context = {
-            "name": "Nanda Athaillah Nurano",
-            "form": form,
-        }
-    return render(request, "experience_form.html", context)
+# @login_required(login_url="/login/")  
+# def create_experience(request):
+#     if not request.user.is_superuser:
+#         raise PermissionDenied
+#     form = ExperienceForm(request.POST or None)
+#     if form.is_valid() and request.method == "POST":
+#         form.save()
+#         return redirect('main:show_experience')
+#     context = {
+#             "name": "Nanda Athaillah Nurano",
+#             "form": form,
+#         }
+#     return render(request, "experience_form.html", context)
 
 @require_POST
 def create_experience_ajax(request):
@@ -182,23 +181,32 @@ def delete_experience(request, id):
 
 
 
-def show_skills(request):
-    # Grab whatever the user typed in the search box
-    query = request.GET.get('q')
-    skills = Skill.objects.all()
 
-    if query:
-        skills = Skill.objects.filter(category__icontains=query) | Skill.objects.filter(items__icontains=query)
-    else:
-        skills = Skill.objects.all()
-
+def get_skills_json(request):
+    query = request.GET.get("q", "").strip()
+    skills = Skill.objects.prefetch_related('starred_by').all()
     
-    context = {
-        "skills": skills,
-        "name": "Nanda Athaillah Nurano"
-    }
-    return render(request, "skills.html", context)
-
+    if query:
+        skills = skills.filter(Q(category__icontains=query) | Q(items__icontains=query))
+        
+    data = []
+    for skl in skills:
+        starred_users = skl.starred_by.all()
+        is_starred = request.user in starred_users if request.user.is_authenticated else False
+        starred_by_names = ", ".join([u.username for u in starred_users])
+        
+        data.append({
+            "pk": str(skl.id),
+            "fields": {
+                "category": skl.category,
+                "items": skl.items,
+                "star_count": starred_users.count(),
+                "is_starred": is_starred,
+                "starred_by_names": starred_by_names,
+            }
+        })
+    return JsonResponse(data, safe=False)
+    
 @login_required(login_url="/login/")  
 def load_my_data(request):
     try:
@@ -208,22 +216,44 @@ def load_my_data(request):
     except Exception as e:
         return HttpResponse(f"Uh oh, something went wrong: {e}")
 
-def show_awards(request):
+from main.forms import AwardForm # Make sure this is imported at the top!
 
-    json_response = get_awards_json(request)
-    awards = serializers.deserialize(
-        "json",
-        json_response.content.decode("utf-8"),
-    )
-    awards = [award.object for award in awards]
+def show_awards(request):
     title_query = request.GET.get("title", "").strip()
+    
     context = {
         "name": "Nanda Athaillah Nurano",
-        "award_list": awards,
         "title_query": title_query,
+        "form": AwardForm(), 
     }
 
     return render(request, "awards.html", context)
+def get_awards_json(request):
+    query = request.GET.get("q", "").strip()
+    awards = Award.objects.prefetch_related('starred_by').all()
+    
+    if query:
+        awards = awards.filter(Q(title__icontains=query) | Q(description__icontains=query) | Q(year__icontains=query))
+        
+    data = []
+    for awd in awards:
+        starred_users = awd.starred_by.all()
+        is_starred = request.user in starred_users if request.user.is_authenticated else False
+        starred_by_names = ", ".join([u.username for u in starred_users])
+        
+        data.append({
+            "pk": str(awd.id),
+            "fields": {
+                "title": awd.title,
+                "description": awd.description,
+                "year": awd.year,
+                "star_count": starred_users.count(),
+                "is_starred": is_starred,
+                "starred_by_names": starred_by_names,
+            }
+        })
+    return JsonResponse(data, safe=False)
+
 
 @login_required(login_url="/login/")
 def delete_award(request, award_id):
@@ -237,35 +267,36 @@ def delete_award(request, award_id):
         return redirect("main:show_awards")
     return redirect("main:show_awards")
 
-@login_required(login_url="/login/")  
-def create_award(request):
+# @login_required(login_url="/login/")  
+# def create_award(request):
+#     if not request.user.is_superuser:
+#         raise PermissionDenied
+
+#     form = AwardForm(request.POST or None)
+
+#     if request.method == "POST" and form.is_valid():
+#         form.save()
+#         messages.success(request, "Award baru berhasil ditambahkan!")
+#         return redirect("main:show_awards")
+
+#     context = {
+#         "name": "Nanda Athaillah Nurano",
+#         "form": form,
+#     }
+#     return render(request, "awards_form.html", context)
+
+@require_POST
+def create_award_ajax(request):
     if not request.user.is_superuser:
-        raise PermissionDenied
+        return JsonResponse({"message": "Only the owner can add awards."}, status=403)
 
-    form = AwardForm(request.POST or None)
-
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        messages.success(request, "Award baru berhasil ditambahkan!")
-        return redirect("main:show_awards")
-
-    context = {
-        "name": "Nanda Athaillah Nurano",
-        "form": form,
-    }
-    return render(request, "awards_form.html", context)
-
-def get_awards_json(request):
-    title_query = request.GET.get("title", "").strip()
-    awards = Award.objects.all()
+    form = AwardForm(request.POST)
+    if form.is_valid():
+        award = form.save()
+        return JsonResponse({"message": "Award added successfully.", "pk": str(award.id)}, status=201)
     
-    # If user searched for something, filter it
-    if title_query:
-        awards = awards.filter(title__icontains=title_query)
-        
-    awards_json = serializers.serialize("json", awards)
-    
-    return HttpResponse(awards_json, content_type="application/json")
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+
 
 @login_required(login_url="/login/")  
 def edit_award(request, id):
@@ -291,20 +322,39 @@ def edit_award(request, id):
         }   
     return render(request, "edit_award.html", context)
 
-@login_required(login_url="/login/")  
-def create_skill(request):
-    if not request.user.is_superuser:
-        raise PermissionDenied
+# @login_required(login_url="/login/")  
+# def create_skill(request):
+#     if not request.user.is_superuser:
+#         raise PermissionDenied
 
-    form = SkillForm(request.POST or None)
-    if form.is_valid() and request.method == "POST":
-        form.save()
-        return redirect('main:show_skills') 
+#     form = SkillForm(request.POST or None)
+#     if form.is_valid() and request.method == "POST":
+#         form.save()
+#         return redirect('main:show_skills') 
+#     context = {
+#             "name": "Nanda Athaillah Nurano",
+#             "form": form,
+#         }
+#     return render(request, "skill_form.html", context)
+
+@require_POST
+def create_skill_ajax(request):
+    if not request.user.is_superuser:
+        return JsonResponse({"message": "Only the owner can add skills."}, status=403)
+
+    form = SkillForm(request.POST)
+    if form.is_valid():
+        skill = form.save()
+        return JsonResponse({"message": "Skill added successfully.", "pk": str(skill.id)}, status=201)
+    
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+
+def show_skills(request):
     context = {
-            "name": "Nanda Athaillah Nurano",
-            "form": form,
-        }
-    return render(request, "skill_form.html", context)
+        "name": "Nanda Athaillah Nurano",
+        "form": SkillForm(), 
+    }
+    return render(request, "skills.html", context)
 
 @login_required(login_url="/login/")  
 def edit_skill(request, id):

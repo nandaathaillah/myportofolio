@@ -5,53 +5,248 @@
 {% endblock meta %}
 
 {% block content %}
-    <main>
-        <section class="experience-section" id="experience">
-            <div class="container">
-                <p class="section-kicker">My Awards so far</p>
-                
-                <div class="project-header">
-                    <h1>Awards</h1> 
-                    {% if user.is_superuser %}  
-                        <a href="{% url 'main:create_award' %}" class="button project-add-button">+ Add an Award</a>
-                    {% endif %}  
-                </div>
-
-                <form method="get" action="{% url 'main:show_awards' %}" class="project-search">
-                    <input type="search" name="title" value="{{ title_query }}" placeholder="Find an award..." class="project-search_input">
-                    <button type="submit" class="button">Find</button>
-                </form>
-
-                <div class="experience-grid">
-                    {% for award in award_list %}
-                        <article class="experience-card">
-                            <span class="experience-category">
-                                {{ award.year }}
-                            </span>
-                            <h2>{{ award.title }}</h2>
-                            <p class="experience-description">
-                                {{ award.description }}
-                            </p>
-                            
-                            <div class="project-card-actions" style="margin-top: 1.5rem;">
-                                <div class="project-actions">
-                                    {% include "components/award_star.html" with award=award %}
-                                    {% if perms.main.change_experience or user.is_superuser %}
-                                        <a href="{% url 'main:edit_award' award.id %}" class="button button-secondary">Edit Award</a>
-                                    {% endif %}
-                                    {% if user.is_superuser %}  
-                                        {% include "components/award_delete_modal.html" with award=award %} <!--Delete Button--> 
-                                    {% endif %}  
-                                </div>
-                            </div>
-                        </article>
-                    {% empty %}
-                        <p class="empty-state">
-                            No awards have been added yet.
-                        </p>
-                    {% endfor %}
-                </div>
+<main>
+    <section class="experience-section" id="experience">
+        <div class="container">
+            <p class="section-kicker">My Awards so far</p>
+            
+            <div class="project-header">
+                <h1>Awards</h1> 
+                {% if user.is_superuser %}  
+                    <!-- Updated to use popover for the modal -->
+                    <button type="button" class="button project-add-button" popovertarget="add-award-modal">
+                        <span aria-hidden="true">+</span> Add an Award
+                    </button>
+                {% endif %}  
             </div>
-        </section>
-    </main>
+
+            <!-- Updated Search Form for AJAX -->
+            <form id="award-search-form" class="project-search">
+                <input type="search" id="search-input" name="title" value="{{ title_query }}" placeholder="Find an award..." class="project-search_input">
+                <button type="submit" class="button">Find</button>
+            </form>
+
+            <!-- Loading, Error, and Empty States -->
+            <div id="loading" class="empty-state hide">
+                <p>Loading awards...</p>
+            </div>
+            
+            <div id="error" class="empty-state hide">
+                <p>Failed to load data. Please try again.</p>
+            </div>
+            
+            <div id="empty" class="empty-state hide">
+                <p>No awards found.</p>
+            </div>
+
+            <!-- The Empty Grid for JavaScript to fill -->
+            <div id="grid" class="experience-grid hide"></div>
+            
+        </div>
+    </section>
+</main>
+
+<!-- Include the Modal Form -->
+{% if user.is_superuser %}
+    {% include "components/award_form_modal.html" %}
+{% endif %}
+
+<!-- The JavaScript Block -->
+<script>
+const BASE_AWARDS_ENDPOINT = "{% url 'main:get_awards_json' %}";
+const CREATE_AWARD_ENDPOINT = "{% url 'main:create_award_ajax' %}";
+const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+const HAS_CHANGE_PERM = "{{ perms.main.change_award|yesno:'true,false' }}" === "true";
+
+let abortController;
+const SEARCH_DEBOUNCE_DELAY = 300;
+let debounceTimer;
+
+const loadingState = document.getElementById('loading');
+const errorState = document.getElementById('error');
+const emptyState = document.getElementById('empty');
+const gridContainer = document.getElementById('grid');
+const searchForm = document.getElementById('award-search-form');
+const searchInput = document.getElementById('search-input');
+const awardForm = document.getElementById('award-form');
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
+    loadingState.classList.toggle('hide', !showLoading);
+    errorState.classList.toggle('hide', !showError);
+    emptyState.classList.toggle('hide', !showEmpty);
+    gridContainer.classList.toggle('hide', !showGrid);
+}
+
+function closeAwardModal() {
+    const modal = document.getElementById("add-award-modal");
+    if (modal) modal.hidePopover();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function buildAwardCard(item) {
+    const awd = item.fields;
+    const awdId = item.pk;
+    const article = document.createElement('article');
+    article.className = 'experience-card';
+
+    const starUrl = `{% url 'main:toggle_star_award' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', awdId);
+    
+    let actionsHtml = `
+        <form method="post" action="${starUrl}" class="star-form">
+            {% csrf_token %}
+            <button type="submit" class="button button-star ${awd.is_starred ? 'is-starred' : ''}" title="${awd.star_count > 0 ? 'Starred by ' + escapeHtml(awd.starred_by_names) : 'Be the first to star'}">
+                <span aria-hidden="true">★</span>
+                ${awd.is_starred ? 'Unstar' : 'Star'}
+                <span class="star-count">${awd.star_count}</span>
+            </button>
+        </form>
+    `;
+
+    if (IS_SUPERUSER || HAS_CHANGE_PERM) {
+        const editUrl = `{% url 'main:edit_award' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', awdId);
+        actionsHtml += `<a href="${editUrl}" class="button button-secondary">Edit Award</a>`;
+    }
+    
+    if (IS_SUPERUSER) {
+        const deleteUrl = `{% url 'main:delete_award' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', awdId);
+        actionsHtml += `
+            <form method="post" action="${deleteUrl}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="button button-danger" onclick="return confirm('Delete this award?');">Delete</button>
+            </form>`;
+    }
+
+    article.innerHTML = `
+        <span class="experience-category">${escapeHtml(awd.year)}</span>
+        <h2>${escapeHtml(awd.title)}</h2>
+        <p class="experience-description">${escapeHtml(awd.description)}</p>
+        
+        <div class="project-card-actions" style="margin-top: 1.5rem;">
+            <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">
+                ${actionsHtml}
+            </div>
+        </div>
+    `;
+    return article;
+}
+
+async function fetchAwards(searchQuery = "") {
+    if (abortController) abortController.abort();
+    abortController = new AbortController();
+
+    try {
+        displayPageSection({ showLoading: true });
+        const url = searchQuery ? `${BASE_AWARDS_ENDPOINT}?q=${encodeURIComponent(searchQuery)}` : BASE_AWARDS_ENDPOINT;
+        
+        const response = await fetch(url, {
+            headers: { 'Accept': 'application/json' },
+            signal: abortController.signal
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch data');
+        
+        const data = await response.json();
+        
+        if (data.length === 0) {
+            displayPageSection({ showEmpty: true });
+        } else {
+            gridContainer.innerHTML = "";
+            data.forEach(item => {
+                gridContainer.appendChild(buildAwardCard(item));
+            });
+            displayPageSection({ showGrid: true });
+        }
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        displayPageSection({ showError: true });
+    }
+}
+
+async function addAward(event) {
+    event.preventDefault();
+    const submitButton = awardForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+
+    try {
+        const response = await fetch(CREATE_AWARD_ENDPOINT, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: new FormData(awardForm),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+            awardForm.reset();
+            closeAwardModal();
+            if (typeof showToast === 'function') {
+                showToast('Success', 'New award added successfully!', 'success');
+            }
+            fetchAwards(searchInput.value.trim()); 
+        } else {
+            const errorMessages = result.errors
+                ? Object.values(result.errors).flat().map(error => error.message)
+                : [result.message || `Something went wrong (status ${response.status}).`];
+            if (typeof showToast === 'function') {
+                showToast('Failed to add award', errorMessages.join('\n'), 'error');
+            } else {
+                alert('Failed to add award: ' + errorMessages.join('\n'));
+            }
+        }
+    } catch (error) {
+        console.error('Error adding award:', error);
+        if (typeof showToast === 'function') {
+            showToast('Failed to add award', 'Could not reach the server. Please try again.', 'error');
+        } else {
+            alert('Failed to add award: Could not reach the server.');
+        }
+    } finally {
+        submitButton.disabled = false;
+    }
+}
+
+function searchData() {
+    fetchAwards(searchInput.value.trim());
+}
+
+searchInput.addEventListener("input", function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(searchData, SEARCH_DEBOUNCE_DELAY);
+});
+
+searchForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+    clearTimeout(debounceTimer);
+    searchData();
+});
+
+if (awardForm) {
+    awardForm.addEventListener('submit', addAward);
+}
+
+fetchAwards(searchInput.value.trim());
+</script>
 {% endblock content %}
