@@ -148,23 +148,38 @@ def create_experience_ajax(request):
     return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 
-@login_required(login_url="/login/")  
-def edit_experience(request, id):
+# @login_required(login_url="/login/")  
+# def edit_experience(request, id):
+#     if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
+#         raise PermissionDenied
+
+#     # Grab the exact experience by its UUID
+#     experience = get_object_or_404(Experience, pk=id)
+
+#     form = ExperienceForm(request.POST or None, instance=experience)
+#     if form.is_valid() and request.method == "POST":
+#         form.save()
+#         return redirect('main:show_experience')
+#     context = {
+#         "name": "Nanda Athaillah Nurano",
+#         "form": form,
+#     }
+#     return render(request, "experience_form.html", context)
+
+@require_POST
+def edit_experience_ajax(request, id):
     if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
-        raise PermissionDenied
+        return JsonResponse({"message": "Permission denied."}, status=403)
 
-    # Grab the exact experience by its UUID
     experience = get_object_or_404(Experience, pk=id)
-
-    form = ExperienceForm(request.POST or None, instance=experience)
-    if form.is_valid() and request.method == "POST":
+    # The 'instance=experience' part is what tells Django to UPDATE, not create
+    form = ExperienceForm(request.POST, instance=experience)
+    
+    if form.is_valid():
         form.save()
-        return redirect('main:show_experience')
-    context = {
-        "name": "Nanda Athaillah Nurano",
-        "form": form,
-    }
-    return render(request, "experience_form.html", context)
+        return JsonResponse({"message": "Experience updated successfully."})
+    
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 @login_required(login_url="/login/")  
 def delete_experience(request, id):
@@ -298,29 +313,41 @@ def create_award_ajax(request):
     return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 
-@login_required(login_url="/login/")  
-def edit_award(request, id):
-    if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
-        raise PermissionDenied
+# @login_required(login_url="/login/")  
+# def edit_award(request, id):
+#     if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
+#         raise PermissionDenied
 
-    # Grab the specific award you want to edit
-    award = get_object_or_404(Award, pk=id)
+#     # Grab the specific award you want to edit
+#     award = get_object_or_404(Award, pk=id)
     
-    # Put the award's old meat into the form. 
-    # If the user pressed submit (POST), put the NEW meat in instead!
-    form = AwardForm(request.POST or None, instance=award)
+#     # Put the award's old meat into the form. 
+#     # If the user pressed submit (POST), put the NEW meat in instead!
+#     form = AwardForm(request.POST or None, instance=award)
     
-    #  If they submitted new meat and it's valid, save it!
-    if form.is_valid() and request.method == "POST":
-        form.save()
-        return redirect('main:show_awards')
+#     #  If they submitted new meat and it's valid, save it!
+#     if form.is_valid() and request.method == "POST":
+#         form.save()
+#         return redirect('main:show_awards')
         
-    # If they just clicked "Edit", show them the page with the filled boxes
-    context = {
-            "name": "Nanda Athaillah Nurano",
-            "form": form,
-        }   
-    return render(request, "edit_award.html", context)
+#     # If they just clicked "Edit", show them the page with the filled boxes
+#     context = {
+#             "name": "Nanda Athaillah Nurano",
+#             "form": form,
+#         }   
+#     return render(request, "edit_award.html", context)
+
+@require_POST
+def edit_award_ajax(request, id):
+    if not request.user.has_perm('main.change_award') and not request.user.is_superuser:
+        return JsonResponse({"message": "Permission denied."}, status=403)
+    award = get_object_or_404(Award, pk=id)
+    form = AwardForm(request.POST, instance=award)
+    if form.is_valid():
+        form.save()
+        return JsonResponse({"message": "Award updated successfully."})
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+
 
 # @login_required(login_url="/login/")  
 # def create_skill(request):
@@ -356,17 +383,31 @@ def show_skills(request):
     }
     return render(request, "skills.html", context)
 
-@login_required(login_url="/login/")  
-def edit_skill(request, id):
-    if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
-        raise PermissionDenied
+# @login_required(login_url="/login/")  
+# def edit_skill(request, id):
+#     if not request.user.has_perm('main.change_experience') and not request.user.is_superuser:
+#         raise PermissionDenied
 
+#     skill = get_object_or_404(Skill, pk=id)
+#     form = SkillForm(request.POST or None, instance=skill)
+#     if form.is_valid() and request.method == "POST":
+#         form.save()
+#         return redirect('main:show_skills')
+#     return render(request, "edit_skill.html", {'form': form})
+
+@require_POST
+def edit_skill_ajax(request, id):
+    if not request.user.has_perm('main.change_skill') and not request.user.is_superuser:
+        return JsonResponse({"message": "Permission denied."}, status=403)
+    
     skill = get_object_or_404(Skill, pk=id)
-    form = SkillForm(request.POST or None, instance=skill)
-    if form.is_valid() and request.method == "POST":
+    form = SkillForm(request.POST, instance=skill)
+    
+    if form.is_valid():
         form.save()
-        return redirect('main:show_skills')
-    return render(request, "edit_skill.html", {'form': form})
+        return JsonResponse({"message": "Skill updated successfully."})
+        
+    return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
 
 @login_required(login_url="/login/")  
 def delete_skill(request, id):

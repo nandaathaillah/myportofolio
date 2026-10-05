@@ -70,6 +70,10 @@ const searchForm = document.getElementById('award-search-form');
 const searchInput = document.getElementById('search-input');
 const awardForm = document.getElementById('award-form');
 
+// Global variable to track the current award being edited
+let currentEditId = null;
+window.awardData = {}; // Use window.skillData for skills.html
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -89,7 +93,36 @@ function displayPageSection({ showLoading = false, showError = false, showEmpty 
 function closeAwardModal() {
     const modal = document.getElementById("add-award-modal");
     if (modal) modal.hidePopover();
+    if (awardForm) awardForm.reset();
+    currentEditId = null; 
+
+    document.getElementById('add-award-modal-title').innerText = "Add a New Award";
+    const submitBtn = document.querySelector('#award-form button[type="submit"]');
+    if (submitBtn) submitBtn.innerText = "Add Award";
 }
+
+function openEditModal(awdId) {
+    currentEditId = awdId;
+    const item = window.awardData[awdId];
+
+    document.getElementById('add-award-modal-title').innerText = "Edit Award";
+    document.querySelector('#award-form button[type="submit"]').innerText = "Save Changes";
+
+    
+    // class Award(models.Model):
+    //     title = models.CharField(max_length=255)
+    //     description = models.TextField()
+    //     year = models.CharField(max_length=4)
+    //     time_added = models.DateTimeField(auto_now_add=True)
+    //     starred_by = models.ManyToManyField(User, related_name="starred_awards", blank=True)
+
+    if (document.getElementById('id_title')) document.getElementById('id_title').value = item.fields.title;
+    if (document.getElementById('id_description')) document.getElementById('id_description').value = item.fields.description;
+    if (document.getElementById('id_year')) document.getElementById('id_year').value = item.fields.year;
+
+    document.getElementById('add-award-modal').showPopover();
+}
+
 
 function getCookie(name) {
     let cookieValue = null;
@@ -125,9 +158,10 @@ function buildAwardCard(item) {
         </form>
     `;
 
+    window.awardData[awdId] = item; // Cache the data
+
     if (IS_SUPERUSER || HAS_CHANGE_PERM) {
-        const editUrl = `{% url 'main:edit_award' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', awdId);
-        actionsHtml += `<a href="${editUrl}" class="button button-secondary">Edit Award</a>`;
+        actionsHtml += `<button type="button" class="button button-secondary" onclick="openEditModal('${awdId}')">Edit</button>`;
     }
     
     if (IS_SUPERUSER) {
@@ -190,8 +224,13 @@ async function addAward(event) {
     const submitButton = awardForm.querySelector('button[type="submit"]');
     submitButton.disabled = true;
 
+    let url = CREATE_AWARD_ENDPOINT;
+    if (currentEditId) {
+        url = `{% url 'main:edit_award_ajax' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', currentEditId);
+    }
+
     try {
-        const response = await fetch(CREATE_AWARD_ENDPOINT, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'X-CSRFToken': getCookie('csrftoken') },
             body: new FormData(awardForm),
@@ -248,5 +287,6 @@ if (awardForm) {
 }
 
 fetchAwards(searchInput.value.trim());
+
 </script>
 {% endblock content %}

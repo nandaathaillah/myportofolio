@@ -2,7 +2,7 @@ from django.urls import path
 from main.views import (
     create_award_ajax, create_skill_ajax, create_experience_ajax,
     delete_award, delete_skill, delete_experience,
-    edit_award, edit_skill, edit_experience,
+    edit_award_ajax, edit_experience_ajax, edit_skill_ajax,
     get_awards_json, get_skills_json, get_experiences_json,
     show_main, show_experience, show_awards, show_skills,
     toggle_star_award, toggle_star_experience, toggle_star_skill,
@@ -17,13 +17,10 @@ urlpatterns = [
     path('skills/', show_skills, name='show_skills'),
 
     path("awards/<str:award_id>/delete/", delete_award, name="delete_award"),
-    path('awards/<str:id>/edit/', edit_award, name='edit_award'),
 
     path("skills/<str:id>/delete/", delete_skill, name="delete_skill"),
-    path('skills/<str:id>/edit/', edit_skill, name='edit_skill'),
 
     path('experience/', show_experience, name='show_experience'),
-    path('experience/<str:id>/edit/', edit_experience, name='edit_experience'),
     path('experience/<str:id>/delete/', delete_experience, name='delete_experience'),
 
     path('register/', register, name='register'),
@@ -40,4 +37,8 @@ urlpatterns = [
     path("awards/json/", get_awards_json, name="get_awards_json"),
     path("skills/json/", get_skills_json, name="get_skills_json"),
     path("skills/add/", create_skill_ajax, name="create_skill_ajax"),
+
+    path('experience/<uuid:id>/edit-ajax/', edit_experience_ajax, name='edit_experience_ajax'),
+    path('awards/<str:id>/edit-ajax/', edit_award_ajax, name='edit_award_ajax'),
+    path('skills/<str:id>/edit-ajax/', edit_skill_ajax, name='edit_skill_ajax'),
 ]

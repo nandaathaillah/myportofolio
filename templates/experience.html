@@ -44,9 +44,10 @@
 {% if user.is_superuser %}
     {% include "components/experience_form_modal.html" %}
 {% endif %}
-<!-- JS block -->
+
 <script>
 const BASE_EXPERIENCES_ENDPOINT = "{% url 'main:get_experiences_json' %}";
+const CREATE_EXPERIENCE_ENDPOINT = "{% url 'main:create_experience_ajax' %}";
 const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
 const HAS_CHANGE_PERM = "{{ perms.main.change_experience|yesno:'true,false' }}" === "true";
 
@@ -60,6 +61,11 @@ const emptyState = document.getElementById('empty');
 const gridContainer = document.getElementById('grid');
 const searchForm = document.getElementById('experience-search-form');
 const searchInput = document.getElementById('search-input');
+const experienceForm = document.getElementById('experience-form');
+
+// Track if the user is editing an item
+let currentEditId = null;
+window.experienceData = {}; // Stores the latest fetched data
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -69,8 +75,39 @@ function escapeHtml(value) {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
 }
+
 function closeExperienceModal() {
-    document.getElementById("add-experience-modal").hidePopover();
+    const modal = document.getElementById("add-experience-modal");
+    if (modal) modal.hidePopover();
+    if (experienceForm) experienceForm.reset();
+    currentEditId = null; 
+    
+    document.getElementById('add-experience-modal-title').innerText = "Add a New Experience";
+    const submitBtn = document.querySelector('#experience-form button[type="submit"]');
+    if (submitBtn) submitBtn.innerText = "Add Experience";
+}
+
+function openEditModal(expId) {
+    currentEditId = expId;
+    const item = window.experienceData[expId];
+    
+    document.getElementById('add-experience-modal-title').innerText = "Edit Experience";
+    document.querySelector('#experience-form button[type="submit"]').innerText = "Save Changes";
+    
+    // Populate the form fields
+    const titleField = document.getElementById('id_title');
+    if (titleField) titleField.value = item.fields.title;
+    
+    const descField = document.getElementById('id_description');
+    if (descField) descField.value = item.fields.description;
+    
+    const categoryDropdown = document.getElementById('id_category');
+    if (categoryDropdown) categoryDropdown.value = item.fields.category;
+    
+    const isOngoingCheckbox = document.getElementById('id_is_ongoing');
+    if (isOngoingCheckbox) isOngoingCheckbox.checked = item.fields.is_ongoing;
+
+    document.getElementById('add-experience-modal').showPopover();
 }
 
 function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
@@ -83,6 +120,9 @@ function displayPageSection({ showLoading = false, showError = false, showEmpty 
 function buildExperienceCard(item) {
     const exp = item.fields;
     const expId = item.pk;
+    
+    window.experienceData[expId] = item;
+    
     const article = document.createElement('article');
     article.className = 'experience-card';
 
@@ -100,8 +140,7 @@ function buildExperienceCard(item) {
     `;
 
     if (IS_SUPERUSER || HAS_CHANGE_PERM) {
-        const editUrl = `{% url 'main:edit_experience' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', expId);
-        actionsHtml += `<a href="${editUrl}" class="button button-secondary">Edit</a>`;
+        actionsHtml += `<button type="button" class="button button-secondary" onclick="openEditModal('${expId}')">Edit</button>`;
     }
     
     if (IS_SUPERUSER) {
@@ -152,6 +191,7 @@ async function fetchExperiences(searchQuery = "") {
             displayPageSection({ showEmpty: true });
         } else {
             gridContainer.innerHTML = "";
+            window.experienceData = {}; 
             data.forEach(item => {
                 gridContainer.appendChild(buildExperienceCard(item));
             });
@@ -163,29 +203,6 @@ async function fetchExperiences(searchQuery = "") {
     }
 }
 
-function searchData() {
-    fetchExperiences(searchInput.value.trim());
-}
-
-searchInput.addEventListener("input", function() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(searchData, SEARCH_DEBOUNCE_DELAY);
-});
-
-searchForm.addEventListener("submit", function(e) {
-    e.preventDefault();
-    clearTimeout(debounceTimer);
-    searchData();
-});
-
-fetchExperiences(searchInput.value.trim());
-
-
-
-const CREATE_EXPERIENCE_ENDPOINT = "{% url 'main:create_experience_ajax' %}";
-const experienceForm = document.getElementById('experience-form');
-
-// Securely read the CSRF token from cookies
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -201,14 +218,18 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Send the form data to the server using the Fetch API
-async function addExperience(event) {
+async function addOrUpdateExperience(event) {
     event.preventDefault();
     const submitButton = experienceForm.querySelector('button[type="submit"]');
     submitButton.disabled = true;
 
+    let url = CREATE_EXPERIENCE_ENDPOINT;
+    if (currentEditId) {
+        url = `{% url 'main:edit_experience_ajax' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', currentEditId);
+    }
+
     try {
-        const response = await fetch(CREATE_EXPERIENCE_ENDPOINT, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'X-CSRFToken': getCookie('csrftoken') },
             body: new FormData(experienceForm),
@@ -217,28 +238,58 @@ async function addExperience(event) {
         const result = await response.json().catch(() => ({}));
 
         if (response.ok) {
-            experienceForm.reset();
             closeExperienceModal();
-            showToast('Success', 'New experience added successfully!', 'success');
-            // Refresh the grid immediately without reloading the page
+            if (typeof showToast === 'function') {
+                showToast('Success', currentEditId ? 'Experience updated!' : 'New experience added!', 'success');
+            } else {
+                alert(currentEditId ? 'Experience updated!' : 'New experience added!');
+            }
             fetchExperiences(searchInput.value.trim()); 
         } else {
             const errorMessages = result.errors
                 ? Object.values(result.errors).flat().map(error => error.message)
                 : [result.message || `Something went wrong (status ${response.status}).`];
-            showToast('Failed to add experience', errorMessages.join('\n'), 'error');
+            if (typeof showToast === 'function') {
+                showToast('Error', errorMessages.join('\n'), 'error');
+            } else {
+                alert('Error: ' + errorMessages.join('\n'));
+            }
         }
     } catch (error) {
-        console.error('Error adding experience:', error);
-        showToast('Failed to add experience', 'Could not reach the server. Please try again.', 'error');
+        console.error('Error:', error);
+        if (typeof showToast === 'function') {
+            showToast('Error', 'Could not reach the server.', 'error');
+        } else {
+            alert('Error: Could not reach the server.');
+        }
     } finally {
         submitButton.disabled = false;
     }
 }
 
-if (experienceForm) {
-    experienceForm.addEventListener('submit', addExperience);
+if (searchInput) {
+    searchInput.addEventListener("input", function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fetchExperiences(searchInput.value.trim()), SEARCH_DEBOUNCE_DELAY);
+    });
 }
+
+if (searchForm) {
+    searchForm.addEventListener("submit", function(e) {
+        e.preventDefault();
+        clearTimeout(debounceTimer);
+        fetchExperiences(searchInput.value.trim());
+    });
+}
+
+if (experienceForm) {
+    experienceForm.addEventListener('submit', addOrUpdateExperience);
+}
+
+const modalBackdrops = document.querySelectorAll('[popovertarget="add-experience-modal"][popovertargetaction="hide"]');
+modalBackdrops.forEach(btn => btn.addEventListener('click', closeExperienceModal));
+
+fetchExperiences(searchInput ? searchInput.value.trim() : "");
 </script>
 
 {% endblock content %}

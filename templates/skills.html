@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block meta %}
     <title>Skills - {{ name }}</title>
 {% endblock meta %}
@@ -9,11 +8,10 @@
     <section class="experience-section" id="skills-section">
         <div class="container">
             <p class="section-kicker">My Skills so far</p>
-            
             <div class="project-header">
                 <h1>Skills</h1> 
                 {% if user.is_superuser %}  
-                    <button type="button" class="button project-add-button" popovertarget="add-skill-modal">
+                    <button type="button" class="button project-add-button" popovertarget="add-skill-modal" onclick="closeSkillModal()">
                         <span aria-hidden="true">+</span> Add a Skill
                     </button>
                 {% endif %}  
@@ -24,20 +22,10 @@
                 <button type="submit" class="button">Find</button>
             </form>
 
-            <div id="loading" class="empty-state hide">
-                <p>Loading skills...</p>
-            </div>
-            
-            <div id="error" class="empty-state hide">
-                <p>Failed to load data. Please try again.</p>
-            </div>
-            
-            <div id="empty" class="empty-state hide">
-                <p>No skills found.</p>
-            </div>
-
+            <div id="loading" class="empty-state hide"><p>Loading skills...</p></div>
+            <div id="error" class="empty-state hide"><p>Failed to load data.</p></div>
+            <div id="empty" class="empty-state hide"><p>No skills found.</p></div>
             <div id="grid" class="experience-grid hide"></div>
-            
         </div>
     </section>
 </main>
@@ -53,8 +41,8 @@ const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
 const HAS_CHANGE_PERM = "{{ perms.main.change_skill|yesno:'true,false' }}" === "true";
 
 let abortController;
-const SEARCH_DEBOUNCE_DELAY = 300;
 let debounceTimer;
+const SEARCH_DEBOUNCE_DELAY = 300;
 
 const loadingState = document.getElementById('loading');
 const errorState = document.getElementById('error');
@@ -64,13 +52,11 @@ const searchForm = document.getElementById('skill-search-form');
 const searchInput = document.getElementById('search-input');
 const skillForm = document.getElementById('skill-form');
 
+let currentEditId = null;
+window.skillData = {}; 
+
 function escapeHtml(value) {
-    return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+    return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 }
 
 function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
@@ -83,6 +69,28 @@ function displayPageSection({ showLoading = false, showError = false, showEmpty 
 function closeSkillModal() {
     const modal = document.getElementById("add-skill-modal");
     if (modal) modal.hidePopover();
+    if (skillForm) skillForm.reset();
+    currentEditId = null;
+
+    const titleEl = document.getElementById('add-skill-modal-title');
+    if (titleEl) titleEl.innerText = "Add a New Skill";
+    const submitBtn = document.querySelector('#skill-form button[type="submit"]');
+    if (submitBtn) submitBtn.innerText = "Add Skill";
+}
+
+function openEditModal(sklId) {
+    currentEditId = sklId;
+    const item = window.skillData[sklId];
+
+    document.getElementById('add-skill-modal-title').innerText = "Edit Skill";
+    document.querySelector('#skill-form button[type="submit"]').innerText = "Save Changes";
+
+    const catField = document.getElementById('id_category');
+    if (catField) catField.value = item.fields.category;
+    const itemsField = document.getElementById('id_items');
+    if (itemsField) itemsField.value = item.fields.items;
+
+    document.getElementById('add-skill-modal').showPopover();
 }
 
 function getCookie(name) {
@@ -103,25 +111,24 @@ function getCookie(name) {
 function buildSkillCard(item) {
     const skl = item.fields;
     const sklId = item.pk;
+    window.skillData[sklId] = item; 
+    
     const article = document.createElement('article');
     article.className = 'experience-card';
 
     const starUrl = `{% url 'main:toggle_star_skill' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', sklId);
     
     let actionsHtml = `
-        <form method="post" action="${starUrl}" class="star-form">
+        <form method="post" action="${starUrl}" class="star-form" style="display:inline;">
             {% csrf_token %}
-            <button type="submit" class="button button-star ${skl.is_starred ? 'is-starred' : ''}" title="${skl.star_count > 0 ? 'Starred by ' + escapeHtml(skl.starred_by_names) : 'Be the first to star'}">
-                <span aria-hidden="true">★</span>
-                ${skl.is_starred ? 'Unstar' : 'Star'}
-                <span class="star-count">${skl.star_count}</span>
+            <button type="submit" class="button button-star ${skl.is_starred ? 'is-starred' : ''}">
+                <span aria-hidden="true">★</span> ${skl.is_starred ? 'Unstar' : 'Star'} <span class="star-count">${skl.star_count}</span>
             </button>
         </form>
     `;
 
     if (IS_SUPERUSER || HAS_CHANGE_PERM) {
-        const editUrl = `{% url 'main:edit_skill' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', sklId);
-        actionsHtml += `<a href="${editUrl}" class="button button-secondary">Edit Skill</a>`;
+        actionsHtml += `<button type="button" class="button button-secondary" onclick="openEditModal('${sklId}')">Edit</button>`;
     }
     
     if (IS_SUPERUSER) {
@@ -136,11 +143,8 @@ function buildSkillCard(item) {
     article.innerHTML = `
         <span class="experience-category">${escapeHtml(skl.category)}</span>
         <h2>${escapeHtml(skl.items)}</h2>
-        
         <div class="project-card-actions" style="margin-top: 1.5rem;">
-            <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">
-                ${actionsHtml}
-            </div>
+            <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">${actionsHtml}</div>
         </div>
     `;
     return article;
@@ -153,23 +157,16 @@ async function fetchSkills(searchQuery = "") {
     try {
         displayPageSection({ showLoading: true });
         const url = searchQuery ? `${BASE_SKILLS_ENDPOINT}?q=${encodeURIComponent(searchQuery)}` : BASE_SKILLS_ENDPOINT;
-        
-        const response = await fetch(url, {
-            headers: { 'Accept': 'application/json' },
-            signal: abortController.signal
-        });
-
+        const response = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: abortController.signal });
         if (!response.ok) throw new Error('Failed to fetch data');
         
         const data = await response.json();
-        
         if (data.length === 0) {
             displayPageSection({ showEmpty: true });
         } else {
             gridContainer.innerHTML = "";
-            data.forEach(item => {
-                gridContainer.appendChild(buildSkillCard(item));
-            });
+            window.skillData = {}; 
+            data.forEach(item => gridContainer.appendChild(buildSkillCard(item)));
             displayPageSection({ showGrid: true });
         }
     } catch (error) {
@@ -182,9 +179,14 @@ async function addSkill(event) {
     event.preventDefault();
     const submitButton = skillForm.querySelector('button[type="submit"]');
     submitButton.disabled = true;
-
+    
     try {
-        const response = await fetch(CREATE_SKILL_ENDPOINT, {
+        let targetUrl = CREATE_SKILL_ENDPOINT;
+        if (currentEditId) {
+            targetUrl = `{% url 'main:edit_skill_ajax' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', currentEditId);
+        }
+
+        const response = await fetch(targetUrl, {
             method: 'POST',
             headers: { 'X-CSRFToken': getCookie('csrftoken') },
             body: new FormData(skillForm),
@@ -193,53 +195,43 @@ async function addSkill(event) {
         const result = await response.json().catch(() => ({}));
 
         if (response.ok) {
-            skillForm.reset();
             closeSkillModal();
-            if (typeof showToast === 'function') {
-                showToast('Success', 'New skill added successfully!', 'success');
-            }
+            const successMsg = currentEditId ? 'Skill updated successfully!' : 'New skill added successfully!';
+            if (typeof showToast === 'function') showToast('Success', successMsg, 'success');
             fetchSkills(searchInput.value.trim()); 
         } else {
-            const errorMessages = result.errors
-                ? Object.values(result.errors).flat().map(error => error.message)
-                : [result.message || `Something went wrong (status ${response.status}).`];
-            if (typeof showToast === 'function') {
-                showToast('Failed to add skill', errorMessages.join('\n'), 'error');
-            } else {
-                alert('Failed to add skill: ' + errorMessages.join('\n'));
-            }
+            const errorMessages = result.errors ? Object.values(result.errors).flat().map(error => error.message) : [result.message || 'Error occurred.'];
+            if (typeof showToast === 'function') showToast('Error', errorMessages.join('\n'), 'error');
+            else alert('Error: ' + errorMessages.join('\n'));
         }
     } catch (error) {
-        console.error('Error adding skill:', error);
-        if (typeof showToast === 'function') {
-            showToast('Failed to add skill', 'Could not reach the server. Please try again.', 'error');
-        } else {
-            alert('Failed to add skill: Could not reach the server.');
-        }
+        console.error('Error saving skill:', error);
+        if (typeof showToast === 'function') showToast('Error', 'Could not reach server.', 'error');
     } finally {
         submitButton.disabled = false;
     }
 }
 
-function searchData() {
-    fetchSkills(searchInput.value.trim());
+if (searchInput) {
+    searchInput.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fetchSkills(searchInput.value.trim()), SEARCH_DEBOUNCE_DELAY);
+    });
 }
 
-searchInput.addEventListener("input", function() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(searchData, SEARCH_DEBOUNCE_DELAY);
-});
-
-searchForm.addEventListener("submit", function(e) {
-    e.preventDefault();
-    clearTimeout(debounceTimer);
-    searchData();
-});
-
-if (skillForm) {
-    skillForm.addEventListener('submit', addSkill);
+if (searchForm) {
+    searchForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        clearTimeout(debounceTimer);
+        fetchSkills(searchInput.value.trim());
+    });
 }
 
-fetchSkills(searchInput.value.trim());
+if (skillForm) skillForm.addEventListener('submit', addSkill);
+
+const modalBackdrops = document.querySelectorAll('[popovertarget="add-skill-modal"][popovertargetaction="hide"]');
+modalBackdrops.forEach(btn => btn.addEventListener('click', closeSkillModal));
+
+fetchSkills(searchInput ? searchInput.value.trim() : "");
 </script>
 {% endblock content %}
