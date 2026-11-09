@@ -145,3 +145,26 @@ class ExperienceAPITest(APITestCase):
             self.list_url, self.payload, format="json", HTTP_X_CSRFTOKEN=token,
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+def test_editor_can_patch_but_not_create_or_delete(self):
+        # Set up an Editor
+        editor_group, _ = Group.objects.get_or_create(name="Editor")
+        editor_user = User.objects.create_user(username="editor", password="test-password")
+        editor_user.groups.add(editor_group)
+        self.client.force_authenticate(user=editor_user)
+
+        #Editor can patch
+        response = self.client.patch(self.detail_url, {"title": "Editor Changed"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.experience.refresh_from_db()
+        self.assertEqual(self.experience.title, "Editor Changed")
+
+        #editor cant create
+        response = self.client.post(self.list_url, self.payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        #Editor cant delete
+        response = self.client.delete(self.detail_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.assertEqual(Experience.objects.count(), 1)

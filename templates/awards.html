@@ -52,15 +52,15 @@
 {% endif %}
 
 <!-- The JavaScript Block -->
+{% csrf_token %}
 <script>
-const BASE_AWARDS_ENDPOINT = "{% url 'main:get_awards_json' %}";
-const CREATE_AWARD_ENDPOINT = "{% url 'main:create_award_ajax' %}";
-const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
-const HAS_CHANGE_PERM = "{{ perms.main.change_award|yesno:'true,false' }}" === "true";
+const BASE_AWARDS_ENDPOINT = "{% url 'api:award-list' %}";
+const DETAIL_AWARD_ENDPOINT = "{% url 'api:award-detail' '00000000-0000-0000-0000-000000000000' %}";
+const STAR_AWARD_ENDPOINT = "{% url 'api:award-star' '00000000-0000-0000-0000-000000000000' %}";
 
-let abortController;
-const SEARCH_DEBOUNCE_DELAY = 300;
-let debounceTimer;
+const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
+const HAS_CHANGE_PERM = "{{ perms.main.change_award|yesno:'true,false' }}" === "true"; // Editor role check
 
 const loadingState = document.getElementById('loading');
 const errorState = document.getElementById('error');
@@ -70,17 +70,22 @@ const searchForm = document.getElementById('award-search-form');
 const searchInput = document.getElementById('search-input');
 const awardForm = document.getElementById('award-form');
 
-// Global variable to track the current award being edited
+let abortController;
+let debounceTimer;
 let currentEditId = null;
-window.awardData = {}; // Use window.skillData for skills.html
+
+function getCookie(name) {
+    const prefix = `${name}=`;
+    const cookie = document.cookie.split(';').map(value => value.trim()).find(value => value.startsWith(prefix));
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : null;
+}
 
 function escapeHtml(value) {
-    return String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
+    return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+
+function apiEndpoint(pattern, id) {
+    return pattern.replace('00000000-0000-0000-0000-000000000000', id);
 }
 
 function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
@@ -94,94 +99,46 @@ function closeAwardModal() {
     const modal = document.getElementById("add-award-modal");
     if (modal) modal.hidePopover();
     if (awardForm) awardForm.reset();
-    currentEditId = null; 
+    currentEditId = null;
 
-    document.getElementById('add-award-modal-title').innerText = "Add a New Award";
+    const titleEl = document.getElementById('add-award-modal-title');
+    if (titleEl) titleEl.innerText = "Add a New Award";
     const submitBtn = document.querySelector('#award-form button[type="submit"]');
     if (submitBtn) submitBtn.innerText = "Add Award";
 }
 
-function openEditModal(awdId) {
+function openEditModal(awdId, title, description, year) {
     currentEditId = awdId;
-    const item = window.awardData[awdId];
-
     document.getElementById('add-award-modal-title').innerText = "Edit Award";
     document.querySelector('#award-form button[type="submit"]').innerText = "Save Changes";
 
-    
-    // class Award(models.Model):
-    //     title = models.CharField(max_length=255)
-    //     description = models.TextField()
-    //     year = models.CharField(max_length=4)
-    //     time_added = models.DateTimeField(auto_now_add=True)
-    //     starred_by = models.ManyToManyField(User, related_name="starred_awards", blank=True)
-
-    if (document.getElementById('id_title')) document.getElementById('id_title').value = item.fields.title;
-    if (document.getElementById('id_description')) document.getElementById('id_description').value = item.fields.description;
-    if (document.getElementById('id_year')) document.getElementById('id_year').value = item.fields.year;
+    if (document.getElementById('id_title')) document.getElementById('id_title').value = title;
+    if (document.getElementById('id_description')) document.getElementById('id_description').value = description;
+    if (document.getElementById('id_year')) document.getElementById('id_year').value = year;
 
     document.getElementById('add-award-modal').showPopover();
 }
 
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
-function buildAwardCard(item) {
-    const awd = item.fields;
-    const awdId = item.pk;
+function buildAwardCard(awd) {
     const article = document.createElement('article');
     article.className = 'experience-card';
 
-    const starUrl = `{% url 'main:toggle_star_award' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', awdId);
-    
-    let actionsHtml = `
-        <form method="post" action="${starUrl}" class="star-form">
-            {% csrf_token %}
-            <button type="submit" class="button button-star ${awd.is_starred ? 'is-starred' : ''}" title="${awd.star_count > 0 ? 'Starred by ' + escapeHtml(awd.starred_by_names) : 'Be the first to star'}">
-                <span aria-hidden="true">★</span>
-                ${awd.is_starred ? 'Unstar' : 'Star'}
-                <span class="star-count">${awd.star_count}</span>
-            </button>
-        </form>
-    `;
+    let starBtn = IS_AUTHENTICATED
+        ? `<button type="button" class="button button-star ${awd.is_starred ? 'is-starred' : ''}" data-action="star" data-id="${escapeHtml(awd.id)}" title="Starred by ${escapeHtml(awd.starred_by_names)}"><span aria-hidden="true">★</span> ${awd.is_starred ? 'Unstar' : 'Star'} <span class="star-count">${awd.star_count}</span></button>`
+        : `<a href="{% url 'main:login' %}" class="button">Login to star (${awd.star_count})</a>`;
 
-    window.awardData[awdId] = item; // Cache the data
-
-    if (IS_SUPERUSER || HAS_CHANGE_PERM) {
-        actionsHtml += `<button type="button" class="button button-secondary" onclick="openEditModal('${awdId}')">Edit</button>`;
-    }
+    let editBtn = (IS_SUPERUSER || HAS_CHANGE_PERM)
+        ? `<button type="button" class="button button-secondary" onclick="openEditModal('${awd.id}', '${escapeHtml(awd.title).replace(/'/g, "\\'")}', '${escapeHtml(awd.description).replace(/'/g, "\\'")}', '${escapeHtml(awd.year).replace(/'/g, "\\'")}')">Edit</button>` : '';
     
-    if (IS_SUPERUSER) {
-        const deleteUrl = `{% url 'main:delete_award' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', awdId);
-        actionsHtml += `
-            <form method="post" action="${deleteUrl}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="button button-danger" onclick="return confirm('Delete this award?');">Delete</button>
-            </form>`;
-    }
+    let deleteBtn = IS_SUPERUSER
+        ? `<button type="button" class="button button-danger" data-action="delete" data-id="${escapeHtml(awd.id)}">Delete</button>` : '';
 
     article.innerHTML = `
         <span class="experience-category">${escapeHtml(awd.year)}</span>
         <h2>${escapeHtml(awd.title)}</h2>
         <p class="experience-description">${escapeHtml(awd.description)}</p>
-        
         <div class="project-card-actions" style="margin-top: 1.5rem;">
-            <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">
-                ${actionsHtml}
-            </div>
+            <div class="project-actions" style="display: flex; align-items: center; gap: 1rem;">${starBtn}${editBtn}${deleteBtn}</div>
         </div>
     `;
     return article;
@@ -190,103 +147,113 @@ function buildAwardCard(item) {
 async function fetchAwards(searchQuery = "") {
     if (abortController) abortController.abort();
     abortController = new AbortController();
-
     try {
         displayPageSection({ showLoading: true });
-        const url = searchQuery ? `${BASE_AWARDS_ENDPOINT}?q=${encodeURIComponent(searchQuery)}` : BASE_AWARDS_ENDPOINT;
+        const url = new URL(BASE_AWARDS_ENDPOINT, window.location.origin);
+        if (searchQuery) url.searchParams.set('title', searchQuery);
         
-        const response = await fetch(url, {
-            headers: { 'Accept': 'application/json' },
-            signal: abortController.signal
-        });
-
-        if (!response.ok) throw new Error('Failed to fetch data');
+        const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: abortController.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();
-        
-        if (data.length === 0) {
-            displayPageSection({ showEmpty: true });
-        } else {
-            gridContainer.innerHTML = "";
-            data.forEach(item => {
-                gridContainer.appendChild(buildAwardCard(item));
-            });
-            displayPageSection({ showGrid: true });
-        }
+        gridContainer.replaceChildren(...data.map(buildAwardCard));
+        displayPageSection({ showGrid: data.length > 0, showEmpty: data.length === 0 });
     } catch (error) {
         if (error.name === 'AbortError') return;
         displayPageSection({ showError: true });
     }
 }
 
+function apiErrorMessage(data, status) {
+    const messages = Object.values(data).flat().filter(value => typeof value === 'string');
+    return messages.join('\n') || `Request failed (HTTP ${status}).`;
+}
+
+async function writeAward(url, method, payload) {
+    const response = await fetch(url, {
+        method,
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
+    });
+    if (response.status === 204) return null;
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(apiErrorMessage(data, response.status));
+    return data;
+}
+
 async function addAward(event) {
     event.preventDefault();
-    const submitButton = awardForm.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-
-    let url = CREATE_AWARD_ENDPOINT;
-    if (currentEditId) {
-        url = `{% url 'main:edit_award_ajax' '00000000-0000-0000-0000-000000000000' %}`.replace('00000000-0000-0000-0000-000000000000', currentEditId);
-    }
-
+    const button = awardForm.querySelector('button[type="submit"]');
+    button.disabled = true;
     try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('csrftoken') },
-            body: new FormData(awardForm),
-        });
+        const fields = new FormData(awardForm);
+        const payload = {
+            title: fields.get('title'),
+            description: fields.get('description'),
+            year: fields.get('year')
+        };
 
-        const result = await response.json().catch(() => ({}));
+        const targetUrl = currentEditId ? apiEndpoint(DETAIL_AWARD_ENDPOINT, currentEditId) : BASE_AWARDS_ENDPOINT;
+        const method = currentEditId ? 'PATCH' : 'POST';
 
-        if (response.ok) {
-            awardForm.reset();
-            closeAwardModal();
-            if (typeof showToast === 'function') {
-                showToast('Success', 'New award added successfully!', 'success');
-            }
-            fetchAwards(searchInput.value.trim()); 
-        } else {
-            const errorMessages = result.errors
-                ? Object.values(result.errors).flat().map(error => error.message)
-                : [result.message || `Something went wrong (status ${response.status}).`];
-            if (typeof showToast === 'function') {
-                showToast('Failed to add award', errorMessages.join('\n'), 'error');
-            } else {
-                alert('Failed to add award: ' + errorMessages.join('\n'));
-            }
-        }
+        await writeAward(targetUrl, method, payload);
+        
+        closeAwardModal();
+        if (typeof showToast === 'function') showToast('Success', currentEditId ? 'Award updated.' : 'Award created.', 'success');
+        await fetchAwards(searchInput.value.trim());
     } catch (error) {
-        console.error('Error adding award:', error);
-        if (typeof showToast === 'function') {
-            showToast('Failed to add award', 'Could not reach the server. Please try again.', 'error');
-        } else {
-            alert('Failed to add award: Could not reach the server.');
-        }
+        if (typeof showToast === 'function') showToast('Error', error.message, 'error');
+        else alert(error.message);
     } finally {
-        submitButton.disabled = false;
+        button.disabled = false;
     }
 }
 
-function searchData() {
-    fetchAwards(searchInput.value.trim());
-}
+if (awardForm) awardForm.addEventListener('submit', addAward);
 
-searchInput.addEventListener("input", function() {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(searchData, SEARCH_DEBOUNCE_DELAY);
+gridContainer.addEventListener('click', async function(event) {
+    const button = event.target.closest('button[data-action]');
+    if (!button || button.disabled) return;
+    
+    const action = button.dataset.action;
+    if (action === 'delete' && !window.confirm('Delete this award?')) return;
+    
+    button.disabled = true;
+    try {
+        const pattern = action === 'star' ? STAR_AWARD_ENDPOINT : DETAIL_AWARD_ENDPOINT;
+        await writeAward(apiEndpoint(pattern, button.dataset.id), action === 'star' ? 'POST' : 'DELETE');
+        
+        if (typeof showToast === 'function') showToast('Success', action === 'star' ? 'Star updated.' : 'Award deleted.', 'success');
+        await fetchAwards(searchInput.value.trim());
+    } catch (error) {
+        if (typeof showToast === 'function') showToast('Request failed', error.message, 'error');
+    } finally {
+        button.disabled = false;
+    }
 });
 
-searchForm.addEventListener("submit", function(e) {
-    e.preventDefault();
-    clearTimeout(debounceTimer);
-    searchData();
-});
-
-if (awardForm) {
-    awardForm.addEventListener('submit', addAward);
+if (searchInput) {
+    searchInput.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => fetchAwards(searchInput.value.trim()), 300);
+    });
 }
 
-fetchAwards(searchInput.value.trim());
+if (searchForm) {
+    searchForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        clearTimeout(debounceTimer);
+        fetchAwards(searchInput.value.trim());
+    });
+}
 
+const modalBackdrops = document.querySelectorAll('[popovertarget="add-award-modal"][popovertargetaction="hide"]');
+modalBackdrops.forEach(btn => btn.addEventListener('click', closeAwardModal));
+
+fetchAwards(searchInput ? searchInput.value.trim() : "");
 </script>
 {% endblock content %}
