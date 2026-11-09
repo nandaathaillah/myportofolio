@@ -54,9 +54,10 @@
 <!-- The JavaScript Block -->
 {% csrf_token %}
 <script>
+
 const BASE_AWARDS_ENDPOINT = "{% url 'api:award-list' %}";
-const DETAIL_AWARD_ENDPOINT = "{% url 'api:award-detail' '00000000-0000-0000-0000-000000000000' %}";
-const STAR_AWARD_ENDPOINT = "{% url 'api:award-star' '00000000-0000-0000-0000-000000000000' %}";
+const DETAIL_AWARD_ENDPOINT = "{% url 'api:award-detail' 0 %}";
+const STAR_AWARD_ENDPOINT = "{% url 'api:award-star' 0 %}";
 
 const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
 const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
@@ -85,7 +86,7 @@ function escapeHtml(value) {
 }
 
 function apiEndpoint(pattern, id) {
-    return pattern.replace('00000000-0000-0000-0000-000000000000', id);
+    return pattern.replace('/0/', '/' + id + '/');
 }
 
 function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {

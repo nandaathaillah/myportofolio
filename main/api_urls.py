@@ -10,11 +10,11 @@ urlpatterns = [
 
     # Awards
     path("awards/", api_views.award_list, name="award-list"),
-    path("awards/<uuid:award_id>/", api_views.award_detail, name="award-detail"),
-    path("awards/<uuid:award_id>/star/", api_views.award_star, name="award-star"),
+    path("awards/<int:award_id>/", api_views.award_detail, name="award-detail"),
+    path("awards/<int:award_id>/star/", api_views.award_star, name="award-star"),
     
     # Skills
     path("skills/", api_views.skill_list, name="skill-list"),
-    path("skills/<uuid:skill_id>/", api_views.skill_detail, name="skill-detail"),
-    path("skills/<uuid:skill_id>/star/", api_views.skill_star, name="skill-star"),
+    path("skills/<int:skill_id>/", api_views.skill_detail, name="skill-detail"),
+    path("skills/<int:skill_id>/star/", api_views.skill_star, name="skill-star"),
 ]

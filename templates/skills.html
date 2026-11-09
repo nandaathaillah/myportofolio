@@ -37,8 +37,8 @@
 {% csrf_token %}
 <script>
 const BASE_SKILLS_ENDPOINT = "{% url 'api:skill-list' %}";
-const DETAIL_SKILL_ENDPOINT = "{% url 'api:skill-detail' '00000000-0000-0000-0000-000000000000' %}";
-const STAR_SKILL_ENDPOINT = "{% url 'api:skill-star' '00000000-0000-0000-0000-000000000000' %}";
+const DETAIL_SKILL_ENDPOINT = "{% url 'api:skill-detail' 0 %}";
+const STAR_SKILL_ENDPOINT = "{% url 'api:skill-star' 0 %}";
 
 const IS_SUPERUSER = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
 const IS_AUTHENTICATED = "{{ user.is_authenticated|yesno:'true,false' }}" === "true";
@@ -51,6 +51,7 @@ const gridContainer = document.getElementById('grid');
 const searchForm = document.getElementById('skill-search-form');
 const searchInput = document.getElementById('search-input');
 const skillForm = document.getElementById('skill-form');
+
 
 let abortController;
 let debounceTimer;
@@ -67,7 +68,7 @@ function escapeHtml(value) {
 }
 
 function apiEndpoint(pattern, id) {
-    return pattern.replace('00000000-0000-0000-0000-000000000000', id);
+    return pattern.replace('/0/', '/' + id + '/');
 }
 
 function displayPageSection({ showLoading = false, showError = false, showEmpty = false, showGrid = false }) {
