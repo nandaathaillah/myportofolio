@@ -1,3 +1,4 @@
 {
-    "python.terminal.useEnvFile": true
+    "python.terminal.useEnvFile": true,
+    "cmake.sourceDirectory": "C:/Users/REVIANTO/Documents/UI stuff/Season 3/PBP/Portofolio web/myportofolio/myportofolio_mobile/linux"
 }

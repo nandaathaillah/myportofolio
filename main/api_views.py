@@ -15,6 +15,12 @@ from main.models import Experience, Award, Skill
 from main.serializers import ExperienceSerializer, AwardSerializer, SkillSerializer
 from main.permissions import IsPortfolioOwnerOrReadOnly, IsPortfolioOwnerOrEditorOrReadOnly
 
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+
 @api_view(["GET", "HEAD", "POST"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([IsPortfolioOwnerOrReadOnly])
@@ -190,3 +196,11 @@ def skill_star(request, skill_id):
         skill.starred_by.add(request.user)
     serializer = SkillSerializer(skill, context={"request": request})
     return Response(serializer.data)
+
+#Api logout view
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def api_logout(request):
+    if request.auth is not None:
+        request.auth.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
